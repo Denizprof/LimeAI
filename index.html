@@ -7,11 +7,10 @@
 <meta name="description" content="Lime is a Jarvis-style desktop voice assistant that runs speech recognition and reasoning on your own PC — no cloud AI, no account, no telemetry.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Lime — local-first voice assistant">
-<meta property="og:description" content="A wake word, ~90 voice commands, a live world-data dashboard, and memory that actually persists — speech recognition and reasoning both running on your own machine.">
+<meta property="og:description" content="A wake word, ~90 voice commands, a live world-data dashboard, and memory that actually persists.">
 <meta property="og:image" content="dashboard-screenshot.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Lime — local-first voice assistant">
-<meta name="twitter:description" content="A Jarvis-style desktop assistant that keeps speech recognition and reasoning on your own PC.">
 <meta name="twitter:image" content="dashboard-screenshot.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2216%22 fill=%22%23060c1a%22/><circle cx=%2216%22 cy=%2216%22 r=%228%22 fill=%22%236fc3ff%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -97,7 +96,7 @@
     mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
   }
 
-  .wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:0 28px;}
+  .wrap{position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:0 28px;}
 
   /* ---------- top bar ---------- */
   header{
@@ -113,17 +112,20 @@
     box-shadow:0 8px 30px -12px rgba(0,0,0,0.5);
   }
   .topbar{
-    max-width:1080px;margin:0 auto;padding:18px 28px;
+    max-width:1600px;margin:0 auto;padding:18px 28px;
     display:flex;align-items:center;justify-content:space-between;
     gap:20px;
   }
-  .brand{display:flex;align-items:center;gap:10px;font-family:'Unbounded';font-weight:600;letter-spacing:0.3em;font-size:15px;background:none;border:none;color:var(--text);cursor:pointer;padding:0;}
+  .brand{flex:none;display:flex;align-items:center;gap:10px;font-family:'Unbounded';font-weight:700;letter-spacing:0.16em;font-size:16px;background:none;border:none;color:var(--text);cursor:pointer;padding:0;}
   .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2.4s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-  nav{display:flex;gap:8px;font-size:13px;color:var(--text-dim);}
+  nav{display:flex;gap:4px;font-size:13px;color:var(--text-dim);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%;}
+  nav::-webkit-scrollbar{display:none;}
   nav button{
     background:none;border:1px solid transparent;color:var(--text-dim);cursor:pointer;
-    padding:8px 14px;border-radius:7px;font-size:13px;transition:color .15s,border-color .15s,background .15s;
+    padding:8px 12px;border-radius:7px;font-size:13px;white-space:nowrap;flex:none;
+    display:inline-flex;align-items:center;gap:4px;
+    transition:color .15s,border-color .15s,background .15s;
   }
   nav button:hover{color:var(--text);}
   nav button.active{color:var(--accent);border-color:var(--border-strong);background:rgba(var(--accent-rgb),0.06);}
@@ -213,7 +215,7 @@
 
   /* ---------- nav cards (home -> other pages) ---------- */
   .navcards{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
     background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;
     position:relative;z-index:2;
   }
@@ -268,8 +270,8 @@
   .readout{border-top:1px solid var(--border);}
   .row{
     display:grid;
-    grid-template-columns:22px 1fr 1.4fr;
-    gap:28px;
+    grid-template-columns:10px 1fr 1.4fr;
+    gap:16px 28px;
     align-items:start;
     padding:22px 0;
     border-bottom:1px solid var(--border);
@@ -330,8 +332,7 @@
   .flow-diagram{margin-bottom:18px;}
   .fd-label{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;}
   .flow-diagram-yes .fd-label{color:var(--green);}
-  .fd-boundary{border:1px dashed var(--border-strong);border-radius:12px;padding:26px 20px 20px;position:relative;background:rgba(125,227,200,0.03);}
-  .fd-boundary-tag{position:absolute;top:-10px;left:16px;background:var(--bg);padding:0 8px;font-family:'JetBrains Mono';font-size:10px;letter-spacing:0.1em;color:var(--green);text-transform:uppercase;}
+  .fd-boundary{border:1px dashed var(--border-strong);border-radius:12px;padding:22px 20px 20px;position:relative;background:rgba(125,227,200,0.03);}
   .fd-row{display:flex;align-items:center;gap:0;}
   .fd-node{flex:1;text-align:center;font-family:'Unbounded';font-size:14px;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:8px;}
   .fd-node-main{color:var(--accent);}
@@ -838,9 +839,8 @@
     </div>
     <div class="block" style="padding-top:8px;">
       <div class="flow-diagram flow-diagram-yes">
-        <div class="fd-label">What actually happens</div>
+        <div class="fd-label">What actually happens · <span style="color:var(--green);">on your PC</span></div>
         <div class="fd-boundary">
-          <div class="fd-boundary-tag">on your PC</div>
           <div class="fd-row">
             <div class="fd-node"><div class="fd-dot-node"></div>Device</div>
             <div class="fd-line"><span class="fd-pulse"></span></div>
