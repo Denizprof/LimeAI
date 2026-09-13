@@ -426,6 +426,23 @@
   .terminal-line .p{color:var(--green);}
   .dl-note{margin-top:18px;font-size:12px;color:var(--text-faint);max-width:420px;}
 
+  .dl-quick{background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:26px 28px;}
+  .dl-quick-label{font-family:'Unbounded';font-size:14px;}
+  .dl-quick-cmd{
+    margin-top:14px;background:#04070f;border:1px solid var(--border);border-radius:8px;
+    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--green);overflow-x:auto;
+  }
+  .dl-quick-cmd code{white-space:nowrap;}
+  .dl-copy-btn{
+    flex:none;background:none;border:1px solid var(--border-strong);color:var(--text-dim);
+    font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;
+    transition:color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),background var(--dur-micro) var(--ease-out);
+  }
+  .dl-copy-btn:hover{color:var(--accent);border-color:var(--accent);}
+  .dl-copy-btn.copied{color:var(--green);border-color:var(--green);background:rgba(125,227,200,0.08);}
+  .dl-quick .dl-note{max-width:none;}
+
   footer{border-top:1px solid var(--border);padding:32px 0;position:relative;z-index:2;}
   .foot-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--text-faint);}
   .foot-row .brand{font-size:12px;letter-spacing:0.2em;cursor:default;}
@@ -1003,18 +1020,28 @@
       <p class="lead">Free. Runs offline. No account, no login, no cloud dependency for the core assistant.</p>
     </div>
     <div class="block" style="padding-top:8px;">
-      <div class="dl-panel">
+      <div class="dl-quick">
+        <div class="dl-quick-label">Quick install <span style="color:var(--text-faint);font-weight:400;">— installs Ollama + the qwen2.5:14b model + Lime, in one go</span></div>
+        <div class="dl-quick-cmd">
+          <code id="quickInstallCmd">irm https://raw.githubusercontent.com/Denizprof/LimeAI/main/install.ps1 | iex</code>
+          <button class="dl-copy-btn" id="dlCopyBtn" type="button">Copy</button>
+        </div>
+        <div class="dl-note">Paste into PowerShell (not cmd.exe). It checks for Ollama first — skips the install step if you already have it. The model pull alone is a real ~9GB download.</div>
+      </div>
+
+      <div class="dl-panel" style="margin-top:20px;">
         <div>
           <h3>Lime for Windows</h3>
           <p>Windows 10/11 · 8GB RAM minimum · microphone required</p>
-          <div class="terminal-line"><span class="p">C:\&gt;</span> Lime-Setup.exe</div>
-          <div class="dl-note">⚠ Installer link not live yet — this build hasn't been packaged for distribution. Swap this button's href for your real release URL once one exists.</div>
+          <div class="terminal-line"><span class="p">C:\&gt;</span> Lime-Setup-1.0.0.exe</div>
+          <div class="dl-note">Just the installer, if you already have Ollama + a model pulled yourself.</div>
         </div>
-        <a class="btn-download" href="#" data-download-placeholder>
+        <a class="btn-download" href="https://github.com/Denizprof/LimeAI/releases/download/v1.0.0/Lime-Setup-1.0.0.exe">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
-          Download (coming soon)
+          Download installer only
         </a>
       </div>
+      <p class="flow-trigger-note">Unsigned build — Windows SmartScreen will show an "unknown publisher" warning on first run. That's because there's no paid code-signing certificate behind it, not because anything's wrong. Click "More info → Run anyway." · <a href="https://github.com/Denizprof/LimeAI/blob/main/LICENSE.md" target="_blank" rel="noopener">License</a></p>
     </div>
   </section>
 
@@ -1143,6 +1170,21 @@
     });
   }
   setupFaqAccordion();
+
+  // ---------------------------------------------------------------
+  // Copy-to-clipboard for the quick-install command.
+  // ---------------------------------------------------------------
+  var dlCopyBtn = document.getElementById('dlCopyBtn');
+  if (dlCopyBtn) {
+    dlCopyBtn.addEventListener('click', function () {
+      var text = document.getElementById('quickInstallCmd').textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        dlCopyBtn.textContent = 'Copied';
+        dlCopyBtn.classList.add('copied');
+        setTimeout(function () { dlCopyBtn.textContent = 'Copy'; dlCopyBtn.classList.remove('copied'); }, 1600);
+      }).catch(function () {});
+    });
+  }
 
   // ---------------------------------------------------------------
   // Real 3D particle globe, bottom-left — same corner convention the
