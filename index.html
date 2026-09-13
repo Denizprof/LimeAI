@@ -3,8 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Lime — a local-first, voice-controlled desktop assistant. Speech recognition and reasoning both run on your own machine.">
-<title>Lime</title>
+<title>Lime — local-first voice assistant</title>
+<meta name="description" content="Lime is a Jarvis-style desktop voice assistant that runs speech recognition and reasoning on your own PC — no cloud AI, no account, no telemetry.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Lime — local-first voice assistant">
+<meta property="og:description" content="A wake word, ~90 voice commands, a live world-data dashboard, and memory that actually persists — speech recognition and reasoning both running on your own machine.">
+<meta property="og:image" content="dashboard-screenshot.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Lime — local-first voice assistant">
+<meta name="twitter:description" content="A Jarvis-style desktop assistant that keeps speech recognition and reasoning on your own PC.">
+<meta name="twitter:image" content="dashboard-screenshot.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2016%22 fill=%22%23060c1a%22/><circle cx=%2216%22 cy=%2216%22 r=%228%22 fill=%22%236fc3ff%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -334,8 +343,9 @@
   .gui-mock{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#060c1a;}
   .gui-mock-topbar{padding:10px 16px;font-family:'JetBrains Mono';font-size:11px;letter-spacing:0.1em;color:#6fc3ff;background:#04070f;display:flex;align-items:center;gap:8px;}
   .gui-mock-dot{width:6px;height:6px;border-radius:50%;background:#6fc3ff;box-shadow:0 0 8px rgba(111,195,255,0.8);flex:none;}
-  .gui-shot-wrap{position:relative;line-height:0;}
-  .gui-shot{display:block;width:100%;height:auto;}
+  .gui-shot-wrap{position:relative;line-height:0;background:#0d1c30;min-height:200px;}
+  .gui-shot{display:block;width:100%;height:auto;aspect-ratio:1920/1080;object-fit:cover;color:transparent;font-size:0;}
+  .gui-shot::before{content:'';}
   .gui-callout{position:absolute;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:0.03em;color:#9fd2ff;background:rgba(6,12,26,0.85);border:1px solid rgba(111,195,255,0.25);border-radius:6px;padding:5px 9px;max-width:180px;z-index:4;line-height:1.4;}
   .gui-callout-1{left:16%;top:6%;}
   .gui-callout-2{right:3%;top:16%;}
@@ -423,14 +433,14 @@
       <div id="orbHost"></div>
       <div class="hero-inner">
         <div class="eyebrow">Voice assistant · runs on your PC</div>
-        <h1>Say &ldquo;Hey Lime.&rdquo;<br><span>Everything else happens locally.</span></h1>
-        <p>Lime is a Jarvis-style desktop assistant with a wake word, ~90 voice commands, a live world-data dashboard, and a memory that actually persists — speech recognition and language model both running on your own machine.</p>
+        <h1>Say &ldquo;Hey Lime.&rdquo;<br><span>Your voice and your AI stay on your PC.</span></h1>
+        <p>Lime is a Jarvis-style desktop assistant with a wake word, ~90 voice commands, a live world-data dashboard, and a memory that actually persists — speech recognition and language model both running on your own machine. Weather, news, and Spotify still need the internet, same as any app that talks to those services.</p>
         <div class="cta-row">
-          <button class="btn-download" data-nav="download">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
-            Download for Windows
+          <button class="btn-download" data-nav="commands">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H4z"/><path d="M9 20h6M12 16v4"/></svg>
+            See what it can do
           </button>
-          <button class="btn-ghost" data-nav="commands">See all commands →</button>
+          <button class="btn-ghost" data-nav="download">Download (coming soon) →</button>
         </div>
         <div class="hero-term">
           <div><span class="say">you say</span> &nbsp;<span class="cmd">"hey lime, what's new in the world?"</span></div>
@@ -869,8 +879,8 @@
       <div class="about-card">
         <div class="about-avatar">D</div>
         <div class="about-body">
-          <div class="about-name">Daniel Deniz Akıncı <span class="about-handle">— Denizprof</span></div>
-          <div class="about-role">15-year-old high school student, Istanbul</div>
+          <div class="about-name">Denizprof <span class="about-handle">— Daniel</span></div>
+          <div class="about-role">15-year-old high school student</div>
           <p>Hi, I'm Daniel. I build Lime by myself, on my own time — it's not a company or a team, just a personal project I've kept pushing on. It started as an experiment to see how far a fully local, privacy-respecting assistant could go with no cloud LLM, no account, and no telemetry, and it's grown one real feature at a time from there: persistent memory, a live world-data monitor, an honest deterministic command system, and most recently Flow State.</p>
           <p>The "real, not fabricated" rule that runs through this whole site is mine: real Windows Defender instead of a fake scanner, real USGS/BBC/NASA feeds instead of invented news, real deterministic pattern matching instead of letting a language model improvise system actions.</p>
           <p>I use Claude, Gemini, ChatGPT, and a few other AI models and tools to help me build faster — but every design decision, every architecture choice, and everything Lime looks and feels like is mine. AI is a tool I use, not the thing doing the building. I'm the one deciding what Lime becomes.</p>
@@ -925,7 +935,7 @@
   <div class="wrap foot-row">
     <div class="brand"><span class="brand-dot" style="width:6px;height:6px;"></span>LIME</div>
     <div>Developed by Denizprof</div>
-    <div>&copy; <span id="copyYear">2026</span> Daniel Deniz Akıncı. All rights reserved.</div>
+    <div>&copy; <span id="copyYear">2026</span> Denizprof. All rights reserved.</div>
   </div>
 </footer>
 
