@@ -7,10 +7,8 @@
 <meta name="description" content="Lime is a Jarvis-style desktop voice assistant that runs speech recognition and reasoning on your own PC — no cloud AI, no account, no telemetry.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Lime — local-first voice assistant">
-<meta property="og:description" content="A wake word, ~90 voice commands, a live world-data dashboard, and memory that actually persists.">
 <meta property="og:image" content="dashboard-screenshot.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Lime — local-first voice assistant">
 <meta name="twitter:image" content="dashboard-screenshot.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2216%22 fill=%22%23060c1a%22/><circle cx=%2216%22 cy=%2216%22 r=%228%22 fill=%22%236fc3ff%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -252,12 +250,12 @@
   .faq-item{transition:background var(--dur-normal) var(--ease-soft);cursor:pointer;}
   .faq-item:hover{background:rgba(var(--accent-rgb),0.03);}
   .faq-item .q{position:relative;}
-  .faq-item .q .idx{transition:transform var(--dur-normal) var(--ease-out), color var(--dur-normal) ease;}
-  .faq-item.open .q .idx{transform:rotate(45deg);color:var(--accent);}
+  .faq-item.open .q .idx::before{background:var(--accent);transform:translate(-50%,-50%) rotate(180deg);}
+  .faq-item.open .q .idx::after{background:var(--accent);opacity:0;transform:translate(-50%,-50%) rotate(90deg);}
   .faq-item .a-wrap{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows var(--dur-major) var(--ease-out), opacity var(--dur-normal) ease;}
   .faq-item.open .a-wrap{grid-template-rows:1fr;opacity:1;}
   .faq-item .a-inner{overflow:hidden;}
-  @media (prefers-reduced-motion:reduce){ .row,.trust-cell,.pstage,.faq-item,.faq-item .a-wrap,.faq-item .q .idx{transition:none;} }
+  @media (prefers-reduced-motion:reduce){ .row,.trust-cell,.pstage,.faq-item,.faq-item .a-wrap{transition:none;} .faq-item .q .idx::before,.faq-item .q .idx::after{transition:none;} }
 
   /* ---------- section shell ---------- */
   section{position:relative;z-index:2;}
@@ -407,8 +405,14 @@
   /* ---------- FAQ ---------- */
   .faq-list{border-top:1px solid var(--border);}
   .faq-item{border-bottom:1px solid var(--border);padding:22px 4px;}
-  .faq-item .q{font-family:'Unbounded';font-size:15.5px;display:flex;justify-content:space-between;gap:16px;align-items:baseline;}
-  .faq-item .q .idx{font-family:'JetBrains Mono';color:var(--text-faint);font-size:16px;display:inline-block;}
+  .faq-item .q{font-family:'Unbounded';font-size:15.5px;display:flex;justify-content:space-between;gap:16px;align-items:center;}
+  .faq-item .q .idx{flex:none;width:18px;height:18px;position:relative;}
+  .faq-item .q .idx::before,.faq-item .q .idx::after{
+    content:'';position:absolute;top:50%;left:50%;background:var(--text-faint);
+    transition:transform var(--dur-normal) var(--ease-out), background var(--dur-normal) ease, opacity var(--dur-normal) ease;
+  }
+  .faq-item .q .idx::before{width:14px;height:2px;transform:translate(-50%,-50%);}
+  .faq-item .q .idx::after{width:2px;height:14px;transform:translate(-50%,-50%);}
   .faq-item .a{color:var(--text-dim);font-size:14.5px;padding-top:10px;max-width:640px;}
 
   /* ---------- download ---------- */
@@ -890,28 +894,44 @@
     <div class="block" style="padding-top:8px;">
       <div class="faq-list">
         <div class="faq-item">
-          <div class="q"><span>Does Lime send my voice or data anywhere?</span><span class="idx">+</span></div>
+          <div class="q"><span>Does Lime send my voice or data anywhere?</span><span class="idx"></span></div>
           <div class="a-wrap"><div class="a-inner"><div class="a">No, by default. Speech recognition (Whisper) and reasoning (Ollama) both run locally on your machine. The only outbound requests are for things that are inherently online — weather, news, Spotify search — and none of those carry your voice.</div></div></div>
         </div>
         <div class="faq-item">
-          <div class="q"><span>Is it free?</span><span class="idx">+</span></div>
+          <div class="q"><span>Is it free?</span><span class="idx"></span></div>
           <div class="a-wrap"><div class="a-inner"><div class="a">Yes. No account, no subscription, no login screen.</div></div></div>
         </div>
         <div class="faq-item">
-          <div class="q"><span>What are the system requirements?</span><span class="idx">+</span></div>
+          <div class="q"><span>What are the system requirements?</span><span class="idx"></span></div>
           <div class="a-wrap"><div class="a-inner"><div class="a">Windows 10 or 11, 8GB RAM minimum (16GB+ recommended if you want the larger local language model), and a microphone. A GPU speeds up responses but isn't required.</div></div></div>
         </div>
         <div class="faq-item">
-          <div class="q"><span>Can it actually control my computer?</span><span class="idx">+</span></div>
+          <div class="q"><span>Can it actually control my computer?</span><span class="idx"></span></div>
           <div class="a-wrap"><div class="a-inner"><div class="a">Within a fixed, deterministic command set — yes: opening apps and files, media/volume control, screenshots, smart-home devices, reminders. It will never improvise a system action from a guess; anything outside its known commands gets a spoken answer, not an attempted action.</div></div></div>
         </div>
         <div class="faq-item">
-          <div class="q"><span>Does it work without internet?</span><span class="idx">+</span></div>
+          <div class="q"><span>Does it work without internet?</span><span class="idx"></span></div>
           <div class="a-wrap"><div class="a-inner"><div class="a">The core assistant does — wake word, transcription, and open-ended conversation all run offline. Weather, world news, and smart-home pairing need a connection, same as any app that talks to those services.</div></div></div>
         </div>
         <div class="faq-item">
-          <div class="q"><span>Can I automate it with other tools?</span><span class="idx">+</span></div>
+          <div class="q"><span>Can I automate it with other tools?</span><span class="idx"></span></div>
           <div class="a-wrap"><div class="a-inner"><div class="a">Yes — Lime runs a small local API (key-protected, bound to your own machine) that tools like n8n can call to ask it questions or trigger real commands.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Can I change the wake word?</span><span class="idx"></span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Yes — it defaults to "Lime" but you can set it to anything in Settings. Wake-word matching is fuzzy (tolerant of accents and mishearing), not an exact string match.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>What languages does it understand?</span><span class="idx"></span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">English, Russian, and Turkish. You need to set the language in the "Speak" dropdown before talking — speech recognition doesn't auto-detect per utterance, so the wrong setting produces garbled transcription.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Can I delete what it remembers about me?</span><span class="idx"></span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Yes — say "forget everything" and saved facts are cleared immediately. There's no hidden backup copy kept anywhere.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Does it run on Mac or Linux?</span><span class="idx"></span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Not currently — Lime is Windows-only (10/11). Several of its system commands (screenshots, Wi-Fi status, now-playing info) use Windows-specific APIs directly.</div></div></div>
         </div>
       </div>
     </div>
@@ -1119,8 +1139,7 @@
   // ---------------------------------------------------------------
   function setupFaqAccordion(){
     document.querySelectorAll('.faq-item').forEach(function(item){
-      var q = item.querySelector('.q');
-      q.addEventListener('click', function(){ item.classList.toggle('open'); });
+      item.addEventListener('click', function(){ item.classList.toggle('open'); });
     });
   }
   setupFaqAccordion();
