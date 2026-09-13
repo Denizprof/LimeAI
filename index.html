@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Lime — a local-first, voice-controlled desktop assistant. Speech recognition and reasoning both run on your own machine.">
+<title>Lime</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#060c1a;
+    --bg-panel:#0b1730;
+    --bg-panel-2:#0f1e3d;
+    --accent:#6fc3ff;
+    --accent-dim:#3d6fa8;
+    --accent-rgb:111,195,255;
+    --green:#7de3c8;
+    --green-rgb:125,227,200;
+    --amber:#ffcf7e;
+    --text:#dbeeff;
+    --text-dim:#7d93b8;
+    --text-faint:#4d6188;
+    --border:rgba(111,195,255,0.16);
+    --border-strong:rgba(111,195,255,0.32);
+    /* global motion system — reused everywhere instead of one-off values */
+    --ease-out:cubic-bezier(0.16,1,0.3,1);
+    --ease-soft:cubic-bezier(0.22,1,0.36,1);
+    --dur-micro:180ms;
+    --dur-normal:380ms;
+    --dur-major:650ms;
+    --dur-cine:1000ms;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Manrope',system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.6;
+    overflow-x:hidden;
+    position:relative;
+  }
+  ::selection{background:rgba(var(--accent-rgb),0.3);color:#fff;}
+
+  h1,h2,h3{
+    font-family:'Unbounded',system-ui,sans-serif;
+    text-wrap:balance;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .mono{font-family:'JetBrains Mono','Consolas',monospace;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:6px;height:6px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 8px var(--accent);
+  }
+
+  a{color:var(--accent);}
+  button{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .scanlines{
+    position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:repeating-linear-gradient(to bottom,
+      rgba(var(--accent-rgb),0.02) 0px, rgba(var(--accent-rgb),0.02) 1px,
+      transparent 1px, transparent 3px);
+  }
+  .grid-bg{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(var(--accent-rgb),0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--accent-rgb),0.05) 1px, transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
+  }
+
+  .wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:0 28px;}
+
+  /* ---------- top bar ---------- */
+  header{
+    position:sticky;top:0;z-index:5;
+    border-bottom:1px solid transparent;
+    background:linear-gradient(180deg, rgba(6,16,19,0.4), rgba(6,16,19,0.1));
+    backdrop-filter:blur(8px);
+    transition:background var(--dur-normal) var(--ease-soft), border-color var(--dur-normal) var(--ease-soft), box-shadow var(--dur-normal) var(--ease-soft);
+  }
+  header.scrolled{
+    background:rgba(6,12,26,0.82);
+    border-bottom-color:var(--border);
+    box-shadow:0 8px 30px -12px rgba(0,0,0,0.5);
+  }
+  .topbar{
+    max-width:1080px;margin:0 auto;padding:18px 28px;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:20px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Unbounded';font-weight:600;letter-spacing:0.3em;font-size:15px;background:none;border:none;color:var(--text);cursor:pointer;padding:0;}
+  .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  nav{display:flex;gap:8px;font-size:13px;color:var(--text-dim);}
+  nav button{
+    background:none;border:1px solid transparent;color:var(--text-dim);cursor:pointer;
+    padding:8px 14px;border-radius:7px;font-size:13px;transition:color .15s,border-color .15s,background .15s;
+  }
+  nav button:hover{color:var(--text);}
+  nav button.active{color:var(--accent);border-color:var(--border-strong);background:rgba(var(--accent-rgb),0.06);}
+  @media (max-width:760px){ nav{gap:2px;} nav button{padding:8px 9px;font-size:12px;} }
+
+  /* ---------- page shell / router ---------- */
+  .page{display:none;}
+  .page.active{display:block;animation:pagein var(--dur-major) var(--ease-out) both;}
+  .page.leaving{display:block;animation:pageout var(--dur-normal) var(--ease-soft) both;}
+  @keyframes pagein{from{opacity:0;transform:translateY(20px);filter:blur(6px);}to{opacity:1;transform:none;filter:blur(0);}}
+  @keyframes pageout{from{opacity:1;transform:none;filter:blur(0);}to{opacity:0;transform:translateY(-10px);filter:blur(4px);}}
+  @media (prefers-reduced-motion:reduce){ .page.active,.page.leaving{animation:none;} }
+
+  /* nav underline that glides between active tabs */
+  nav{position:relative;}
+  .nav-underline{position:absolute;bottom:-1px;height:2px;background:var(--accent);border-radius:2px;
+    transition:left .32s cubic-bezier(.3,.8,.2,1),width .32s cubic-bezier(.3,.8,.2,1);opacity:0;pointer-events:none;}
+  .nav-underline.show{opacity:1;}
+
+  /* scroll-reveal: elements ease in as they enter the viewport */
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.2,1);}
+  .reveal.in{opacity:1;transform:none;}
+  @media (prefers-reduced-motion:reduce){ .reveal{opacity:1;transform:none;transition:none;} }
+
+  .page-hero{padding:64px 0 40px;}
+  .page-hero .eyebrow{margin-bottom:14px;}
+  .page-hero h1{font-size:clamp(30px,4.4vw,44px);line-height:1.08;}
+  .page-hero p.lead{color:var(--text-dim);font-size:16px;max-width:600px;margin:16px 0 0;}
+
+  /* ---------- home hero ---------- */
+  .hero{position:relative;padding:88px 0 260px;}
+  .hero-inner{max-width:640px;}
+  .hero h1{font-size:clamp(40px,6vw,64px);line-height:1.05;margin:20px 0 22px;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--text-dim);font-size:17px;max-width:480px;margin:0 0 34px;}
+
+  .cta-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .btn-download{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--accent);color:#04101c;font-weight:700;
+    padding:14px 26px;border-radius:8px;text-decoration:none;
+    font-size:14px;letter-spacing:0.02em;border:none;cursor:pointer;
+    box-shadow:0 0 0 1px rgba(var(--accent-rgb),0.4), 0 12px 30px -8px rgba(var(--accent-rgb),0.55);
+    transition:transform var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out), filter var(--dur-micro) var(--ease-out);
+  }
+  .btn-download:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 0 0 1px rgba(var(--accent-rgb),0.6), 0 16px 34px -6px rgba(var(--accent-rgb),0.7);filter:brightness(1.06);}
+  .btn-download:active{transform:translateY(0) scale(0.98);}
+  .btn-download svg{width:16px;height:16px;transition:transform var(--dur-micro) var(--ease-out);}
+  .btn-download:hover svg{transform:translateY(2px);}
+  .btn-ghost{
+    display:inline-flex;align-items:center;gap:8px;color:var(--text-dim);text-decoration:none;
+    font-size:13.5px;border:1px solid var(--border);padding:13px 20px;border-radius:8px;
+    background:none;cursor:pointer;transition:border-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out);
+  }
+  .btn-ghost:hover{color:var(--accent);border-color:var(--border-strong);transform:translateY(-1px);}
+  .btn-ghost:active{transform:translateY(0) scale(0.98);}
+  .req-note{font-size:12px;color:var(--text-faint);}
+
+  .hero-term{
+    margin-top:44px;max-width:480px;
+    background:rgba(10,20,38,0.65);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 18px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    backdrop-filter:blur(6px);
+  }
+  .hero-term .say{color:var(--text-faint);}
+  .hero-term .cmd{color:var(--accent);}
+  .hero-term .reply{color:var(--green);}
+  .hero-term div{margin:4px 0;}
+  .caret{display:inline-block;width:7px;height:14px;background:var(--accent);vertical-align:-2px;animation:blink 1s step-end infinite;}
+  @keyframes blink{50%{opacity:0}}
+
+  #orbHost{
+    position:absolute;
+    left:-80px;bottom:-160px;
+    width:560px;height:560px;
+    pointer-events:none;
+    opacity:0.95;
+    mix-blend-mode:screen;
+    z-index:0;
+  }
+  #orbHost canvas{width:100% !important;height:100% !important;display:block;}
+  @media (max-width:820px){ #orbHost{display:none;} }
+
+  /* ---------- nav cards (home -> other pages) ---------- */
+  .navcards{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+    background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;
+    position:relative;z-index:2;
+  }
+  .navcard{
+    position:relative;background:var(--bg-panel);padding:22px 20px;text-align:left;cursor:pointer;border:none;color:var(--text);
+    display:flex;flex-direction:column;gap:8px;overflow:hidden;
+    transition:background var(--dur-normal) var(--ease-soft), transform var(--dur-normal) var(--ease-out), border-color var(--dur-normal) var(--ease-soft);
+    transform:translateY(0) scale(1);will-change:transform;
+  }
+  .navcard::before{
+    content:'';position:absolute;inset:0;pointer-events:none;opacity:0;
+    background:radial-gradient(180px circle at var(--mx,50%) var(--my,50%), rgba(var(--accent-rgb),0.10), transparent 65%);
+    transition:opacity var(--dur-normal) ease;
+  }
+  .navcard:hover{background:var(--bg-panel-2);transform:translateY(-4px) scale(1.01);}
+  .navcard:hover::before{opacity:1;}
+  .navcard .nc-eyebrow{font-family:'JetBrains Mono';font-size:10px;letter-spacing:0.12em;color:var(--text-faint);text-transform:uppercase;position:relative;z-index:1;}
+  .navcard .nc-title{font-family:'Unbounded';font-size:15px;position:relative;z-index:1;}
+  .navcard .nc-arrow{color:var(--accent);font-size:13px;margin-top:auto;position:relative;z-index:1;transition:transform var(--dur-micro) var(--ease-out);}
+  .navcard:hover .nc-arrow{transform:translateX(5px);}
+  @media (prefers-reduced-motion:reduce){ .navcard,.navcard .nc-arrow{transition:none;} .navcard:hover{transform:none;} }
+  @media (max-width:820px){ .navcards{grid-template-columns:1fr 1fr;} }
+  @media (max-width:520px){ .navcards{grid-template-columns:1fr;} }
+
+  /* micro-interactions */
+  .row{transition:background var(--dur-normal) var(--ease-soft), padding-left var(--dur-normal) var(--ease-soft);}
+  .row:hover{background:rgba(var(--accent-rgb),0.035);padding-left:6px;}
+  .row .status{transition:box-shadow var(--dur-normal) ease;}
+  .row:hover .status{box-shadow:0 0 14px var(--green);}
+  .trust-cell{transition:background var(--dur-normal) var(--ease-soft), transform var(--dur-normal) var(--ease-out);}
+  .trust-cell:hover{background:var(--bg-panel-2);transform:translateY(-3px);}
+  .pstage{transition:transform var(--dur-normal) var(--ease-out);}
+  .pstage.on{transform:translateY(-2px);}
+  .faq-item{transition:background var(--dur-normal) var(--ease-soft);cursor:pointer;}
+  .faq-item:hover{background:rgba(var(--accent-rgb),0.03);}
+  .faq-item .q{position:relative;}
+  .faq-item .q .idx{transition:transform var(--dur-normal) var(--ease-out), color var(--dur-normal) ease;}
+  .faq-item.open .q .idx{transform:rotate(45deg);color:var(--accent);}
+  .faq-item .a-wrap{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows var(--dur-major) var(--ease-out), opacity var(--dur-normal) ease;}
+  .faq-item.open .a-wrap{grid-template-rows:1fr;opacity:1;}
+  .faq-item .a-inner{overflow:hidden;}
+  @media (prefers-reduced-motion:reduce){ .row,.trust-cell,.pstage,.faq-item,.faq-item .a-wrap,.faq-item .q .idx{transition:none;} }
+
+  /* ---------- section shell ---------- */
+  section{position:relative;z-index:2;}
+  .block{padding:56px 0;}
+  .section-head{max-width:560px;margin:0 0 40px;}
+  .section-head h2{font-size:clamp(24px,3.2vw,32px);margin-top:12px;}
+  .section-head p{color:var(--text-dim);font-size:15.5px;margin-top:14px;}
+
+  /* ---------- systems readout (features) ---------- */
+  .readout{border-top:1px solid var(--border);}
+  .row{
+    display:grid;
+    grid-template-columns:22px 1fr 1.4fr;
+    gap:28px;
+    align-items:start;
+    padding:22px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .row .status{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green);
+    margin-top:8px;
+  }
+  .row .trigger{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--accent); line-height:1.5; }
+  .row .trigger .tag{ display:block;font-size:10px;letter-spacing:0.14em;color:var(--text-faint);margin-bottom:6px;text-transform:uppercase; }
+  .row .desc{color:var(--text-dim);font-size:14.5px;}
+  .row .desc strong{color:var(--text);font-weight:600;}
+  @media (max-width:700px){
+    .row{grid-template-columns:16px 1fr;}
+    .row .trigger{grid-column:2;} .row .desc{grid-column:2;}
+  }
+
+  /* ---------- brain pipeline diagram ---------- */
+  .pipeline{
+    display:flex;align-items:center;flex-wrap:wrap;gap:0;
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:34px 28px;
+  }
+  .pstage{
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;
+    color:var(--text-dim);flex:1;min-width:90px;text-align:center;
+  }
+  .pdot{width:11px;height:11px;border-radius:50%;background:var(--bg-panel-2);border:1px solid var(--border-strong);}
+  .pstage.on .pdot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px var(--accent);}
+  .pstage.on{color:var(--accent);}
+  .parrow{color:var(--text-faint);font-size:14px;padding:0 4px;flex:0 0 auto;}
+  @media (max-width:700px){ .parrow{display:none;} .pipeline{gap:18px;} }
+
+  .stage-detail{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .stage-detail div{background:var(--bg-panel);padding:20px;}
+  .stage-detail .sd-k{font-family:'JetBrains Mono';font-size:11px;color:var(--accent);letter-spacing:0.1em;}
+  .stage-detail .sd-v{margin-top:8px;font-size:13.5px;color:var(--text-dim);}
+  @media (max-width:700px){.stage-detail{grid-template-columns:1fr;}}
+
+  /* ---------- trust panel ---------- */
+  .trust{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .trust-cell{background:var(--bg-panel);padding:26px 24px;}
+  .trust-cell .k{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;color:var(--text-faint);text-transform:uppercase;}
+  .trust-cell .v{font-family:'Unbounded';font-size:19px;margin-top:10px;color:var(--text);}
+  .trust-cell .d{margin-top:8px;font-size:13px;color:var(--text-dim);}
+  @media (max-width:700px){.trust{grid-template-columns:1fr;}}
+
+  /* ---------- flow state ---------- */
+  .nav-new{
+    display:inline-block;margin-left:6px;font-family:'JetBrains Mono';font-size:8.5px;font-weight:700;
+    letter-spacing:0.05em;color:var(--amber);background:rgba(255,207,126,0.14);border:1px solid rgba(255,207,126,0.4);
+    border-radius:8px;padding:1px 5px;vertical-align:2px;animation:newpulse 2s ease-in-out infinite;
+  }
+  @keyframes newpulse{0%,100%{opacity:.75}50%{opacity:1}}
+  .about-card{display:flex;gap:24px;align-items:flex-start;border:1px solid var(--border);border-radius:14px;padding:30px;background:var(--bg-panel);}
+  .about-avatar{
+    flex:none;width:64px;height:64px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, rgba(111,195,255,0.9), rgba(111,195,255,0.15) 65%, transparent 78%);
+    box-shadow:0 0 26px rgba(111,195,255,0.35);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Unbounded';font-size:24px;color:#eaf6ff;
+  }
+  .about-name{font-family:'Unbounded';font-size:19px;color:var(--text);}
+  .about-name .about-handle{font-family:'JetBrains Mono';font-size:13px;color:var(--text-faint);font-weight:400;}
+  .about-role{font-family:'JetBrains Mono';font-size:11.5px;letter-spacing:0.06em;color:#6fc3ff;margin-top:4px;text-transform:uppercase;}
+  .about-body p{color:var(--text-dim);font-size:14px;line-height:1.65;margin-top:14px;max-width:640px;}
+  @media (max-width:600px){ .about-card{flex-direction:column;} }
+
+  .gui-mock{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#060c1a;}
+  .gui-mock-topbar{padding:10px 16px;font-family:'JetBrains Mono';font-size:11px;letter-spacing:0.1em;color:#6fc3ff;background:#04070f;display:flex;align-items:center;gap:8px;}
+  .gui-mock-dot{width:6px;height:6px;border-radius:50%;background:#6fc3ff;box-shadow:0 0 8px rgba(111,195,255,0.8);flex:none;}
+  .gui-shot-wrap{position:relative;line-height:0;}
+  .gui-shot{display:block;width:100%;height:auto;}
+  .gui-callout{position:absolute;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:0.03em;color:#9fd2ff;background:rgba(6,12,26,0.85);border:1px solid rgba(111,195,255,0.25);border-radius:6px;padding:5px 9px;max-width:180px;z-index:4;line-height:1.4;}
+  .gui-callout-1{left:16%;top:6%;}
+  .gui-callout-2{right:3%;top:16%;}
+  .gui-callout-3{left:2%;bottom:3%;}
+  @media (max-width:700px){ .gui-callout{display:none;} }
+
+  .flow-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .flow-cell{background:var(--bg-panel);padding:26px 24px;}
+  .flow-cell .fk{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:0.12em;color:var(--amber);text-transform:uppercase;}
+  .flow-cell .fv{margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;}
+  .flow-cell .fv strong{color:var(--text);}
+  @media (max-width:700px){.flow-grid{grid-template-columns:1fr;}}
+
+  .flow-demo{
+    margin-top:36px;background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:12px;padding:28px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+  }
+  .flow-demo .fl{color:var(--text-faint);margin:5px 0;}
+  .flow-demo .fl .p{color:var(--amber);}
+  .flow-demo .fl .r{color:var(--text-dim);}
+  .flow-widget-mini{
+    display:inline-flex;align-items:center;gap:10px;margin-top:20px;padding:10px 16px;
+    background:var(--bg-panel-2);border:1px solid var(--border-strong);border-radius:8px;
+  }
+  .flow-widget-mini .fdot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);animation:pulse 1.6s ease-in-out infinite;}
+  .flow-widget-mini .ft{font-family:'JetBrains Mono';font-size:13px;color:var(--amber);font-variant-numeric:tabular-nums;}
+  .mono-inline{font-family:'JetBrains Mono',monospace;padding:1px 6px;border-radius:4px;font-size:12.5px;}
+  .mono-inline-amber{background:rgba(255,207,126,0.14);color:var(--amber);}
+  .mono-inline-accent{background:rgba(var(--accent-rgb),0.12);color:var(--accent);}
+  .flow-trigger-note{margin-top:28px;color:var(--text-faint);font-size:12.5px;}
+
+  /* ---------- FAQ ---------- */
+  .faq-list{border-top:1px solid var(--border);}
+  .faq-item{border-bottom:1px solid var(--border);padding:22px 4px;}
+  .faq-item .q{font-family:'Unbounded';font-size:15.5px;display:flex;justify-content:space-between;gap:16px;align-items:baseline;}
+  .faq-item .q .idx{font-family:'JetBrains Mono';color:var(--text-faint);font-size:16px;display:inline-block;}
+  .faq-item .a{color:var(--text-dim);font-size:14.5px;padding-top:10px;max-width:640px;}
+
+  /* ---------- download ---------- */
+  .dl-panel{
+    background:var(--bg-panel); border:1px solid var(--border-strong); border-radius:14px; padding:44px;
+    display:flex;justify-content:space-between;align-items:center;gap:32px;flex-wrap:wrap;
+  }
+  .dl-panel h3{font-size:24px;}
+  .dl-panel p{color:var(--text-dim);font-size:14.5px;margin:10px 0 0;max-width:380px;}
+  .terminal-line{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-faint);margin-top:16px;}
+  .terminal-line .p{color:var(--green);}
+  .dl-note{margin-top:18px;font-size:12px;color:var(--text-faint);max-width:420px;}
+
+  footer{border-top:1px solid var(--border);padding:32px 0;position:relative;z-index:2;}
+  .foot-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--text-faint);}
+  .foot-row .brand{font-size:12px;letter-spacing:0.2em;cursor:default;}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="scanlines"></div>
+
+<header>
+  <div class="topbar">
+    <button class="brand" data-nav="home"><span class="brand-dot"></span>LIME</button>
+    <nav>
+      <button data-nav="home">Home</button>
+      <button data-nav="commands">Commands</button>
+      <button data-nav="gui">Interface</button>
+      <button data-nav="brain">Brain View</button>
+      <button data-nav="flowstate">Flow State<span class="nav-new">NEW</span></button>
+      <button data-nav="memory">Memory</button>
+      <button data-nav="security">Security</button>
+      <button data-nav="privacy">Local-first</button>
+      <button data-nav="faq">FAQ</button>
+      <button data-nav="about">About</button>
+      <button data-nav="download">Download</button>
+      <div class="nav-underline" id="navUnderline"></div>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ HOME ============ -->
+  <section class="page" id="page-home">
+    <div class="hero">
+      <div id="orbHost"></div>
+      <div class="hero-inner">
+        <div class="eyebrow">Voice assistant · runs on your PC</div>
+        <h1>Say &ldquo;Hey Lime.&rdquo;<br><span>Everything else happens locally.</span></h1>
+        <p>Lime is a Jarvis-style desktop assistant with a wake word, ~90 voice commands, a live world-data dashboard, and a memory that actually persists — speech recognition and language model both running on your own machine.</p>
+        <div class="cta-row">
+          <button class="btn-download" data-nav="download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+            Download for Windows
+          </button>
+          <button class="btn-ghost" data-nav="commands">See all commands →</button>
+        </div>
+        <div class="hero-term">
+          <div><span class="say">you say</span> &nbsp;<span class="cmd">"hey lime, what's new in the world?"</span></div>
+          <div><span class="say">lime</span> &nbsp;&nbsp;&nbsp;<span class="reply">Earthquake M4.2 near Sulawesi. Two headlines from Science Daily.<span class="caret"></span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block" style="padding-top:0;">
+      <div class="navcards">
+        <button class="navcard" data-nav="commands">
+          <div class="nc-eyebrow">01</div>
+          <div class="nc-title">Commands</div>
+          <div class="nc-arrow">Browse the readout →</div>
+        </button>
+        <button class="navcard" data-nav="gui">
+          <div class="nc-eyebrow">02</div>
+          <div class="nc-title">Interface</div>
+          <div class="nc-arrow">See the dashboard →</div>
+        </button>
+        <button class="navcard" data-nav="brain">
+          <div class="nc-eyebrow">03</div>
+          <div class="nc-title">Brain View</div>
+          <div class="nc-arrow">Watch it think →</div>
+        </button>
+        <button class="navcard" data-nav="flowstate">
+          <div class="nc-eyebrow">04<span class="nav-new">NEW</span></div>
+          <div class="nc-title">Flow State</div>
+          <div class="nc-arrow">Lock in →</div>
+        </button>
+        <button class="navcard" data-nav="memory">
+          <div class="nc-eyebrow">05</div>
+          <div class="nc-title">Memory</div>
+          <div class="nc-arrow">Nothing forgotten →</div>
+        </button>
+        <button class="navcard" data-nav="security">
+          <div class="nc-eyebrow">06</div>
+          <div class="nc-title">Security</div>
+          <div class="nc-arrow">Real Defender →</div>
+        </button>
+        <button class="navcard" data-nav="privacy">
+          <div class="nc-eyebrow">07</div>
+          <div class="nc-title">Local-first</div>
+          <div class="nc-arrow">How privacy works →</div>
+        </button>
+        <button class="navcard" data-nav="faq">
+          <div class="nc-eyebrow">08</div>
+          <div class="nc-title">FAQ</div>
+          <div class="nc-arrow">Common questions →</div>
+        </button>
+        <button class="navcard" data-nav="about">
+          <div class="nc-eyebrow">09</div>
+          <div class="nc-title">About</div>
+          <div class="nc-arrow">Who's building this →</div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMMANDS ============ -->
+  <section class="page" id="page-commands">
+    <div class="page-hero">
+      <div class="eyebrow">Systems readout</div>
+      <h1>Ninety-some commands, no menus</h1>
+      <p class="lead">Every phrase below is a real trigger pattern, matched deterministically before anything ever reaches the language model — so the thing that runs is never a guess.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="readout">
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Memory</span>"remember this — I'm allergic to peanuts" · "what do you remember about me?" · "forget everything"</div>
+          <div class="desc"><strong>Persists forever, across restarts.</strong> Lime also auto-saves facts it notices in passing, and logs every real conversation by date and topic — nothing said once is gone by the next session.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">World Monitor</span>"what's new in the world?" · "brief me" · "show the flight tracker" · "show the lightning map"</div>
+          <div class="desc"><strong>Live earthquakes, news, and space data</strong> plotted on an actual world map — USGS quakes above M3.0, BBC World headlines, Science Daily, and NASA's picture of the day, refreshed continuously.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Focus mode</span>"start flow state" · "lock in" · "break this down: refactor the login form" · "stop flow state"</div>
+          <div class="desc"><strong>Lime Flow State</strong> silences every notification, strips the dashboard to a bare terminal look, plays a quiet ambient tone, and tells you when to take a break based on how long you actually worked. Stuck mid-task? It'll hand back a tiny numbered action plan on request.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Knowledge base</span>"what's in my knowledge base?" · "add to my knowledge base: ..." · "build my profile"</div>
+          <div class="desc"><strong>Paste in anything you want it to know</strong> — notes, docs, current events past its training data — and Lime searches and cites it when relevant.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Reminders</span>"remind me in 20 minutes to check the oven" · "set a timer for 5 minutes" · "how long is left?"</div>
+          <div class="desc">Flexible phrasing — spelled-out or digit numbers, "remind"/"remember"/"notify"/"alert" all work the same.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Media</span>"play it on Spotify" · "what song is this" · "queue this song on Spotify" · "volume up"</div>
+          <div class="desc">Real Spotify playback, plus reading Windows' own now-playing info for any app — not just Spotify.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Smart home</span>"turn on the lights" · "dim the lights" · "pair my Hue bridge"</div>
+          <div class="desc">Philips Hue over your local network — no cloud account needed to control your own bulbs.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Security</span>"am I protected?" · "scan my computer for viruses" · "what's my security status?"</div>
+          <div class="desc">Reads Windows Defender's real status and recent threat count, or kicks off a real Defender quick scan — wraps the OS's own antivirus rather than a fake scanner.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">System</span>"take a screenshot" · "what's running" · "lock my PC" · "put the PC to sleep" · "what's my battery?"</div>
+          <div class="desc">Reads real OS state and triggers real OS actions — but never a destructive one on its own (it'll walk you to the Start menu for shutdown rather than doing it for you).</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Notifications &amp; DND</span>"turn on do not disturb" · "what notifications did I miss?" · "turn on app notifications"</div>
+          <div class="desc">One phrase silences everything, or turns on reading out notifications from your other apps — your call on how much Lime interrupts you.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Files &amp; search</span>"open the file quarterly-report" · "find files named invoice" · "search for iPhone 17 on Google"</div>
+          <div class="desc">Opens local files by name, searches your file system, or falls through to a real web search — whichever the phrasing calls for.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Web &amp; browser</span>"play [song] on YouTube" · "go back" · "new tab" · "scroll down" · "reload"</div>
+          <div class="desc">Full hands-free browser control — tabs, navigation, scrolling, YouTube search and playback — without touching the mouse.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Notes</span>"take a note: call the dentist tomorrow" · "read my notes"</div>
+          <div class="desc">Quick voice notes, separate from the permanent memory/knowledge systems — for the stuff you just need jotted down.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Time, date &amp; weather</span>"what time is it?" · "what's the date?" · "what's the weather like?" · "show the weather map"</div>
+          <div class="desc">Fast, deterministic answers for the questions you ask constantly — no LLM round-trip needed.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Interface</span>"open the chat" · "open my brain view" · "compact mode" · "go fullscreen"</div>
+          <div class="desc">Controls Lime's own UI by voice — the chat drawer, the live Brain View pipeline diagram, compact mode, fullscreen.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Conversation recall</span>"what did we talk about today?" · "what have we talked about?"</div>
+          <div class="desc">Searches the permanent, date-stamped conversation log and answers from what was actually said — not a guess.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Meta</span>"help" · "what are your limits?" · "use smarter mode" · "keep listening"</div>
+          <div class="desc">Ask Lime what it can and can't do, in plain language, any time — including switching between its faster and smarter local models.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GUI / INTERFACE ============ -->
+  <section class="page" id="page-gui">
+    <div class="page-hero">
+      <div class="eyebrow">Interface</div>
+      <h1>What you actually see</h1>
+      <p class="lead">No settings maze, no ribbon of buttons across the top. Three widgets, a live world map, and the core — that's the whole dashboard.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="gui-mock">
+        <div class="gui-mock-topbar"><span class="gui-mock-dot"></span>LIME — actual screenshot, not a mockup</div>
+        <div class="gui-shot-wrap">
+          <img class="gui-shot" src="assets/dashboard-screenshot.png" alt="Lime's real dashboard: local time, weather, and Flow State widgets over a live world map with real earthquake markers, the particle-core orb reading 'Listening' in the corner.">
+          <div class="gui-callout gui-callout-1">Widgets stay minimal — no menus, no gear icons</div>
+          <div class="gui-callout gui-callout-2">Real earthquake markers, plotted on a real world map</div>
+          <div class="gui-callout gui-callout-3">The core, with its live status readout underneath</div>
+        </div>
+      </div>
+      <div class="trust" style="margin-top:28px;">
+        <div class="trust-cell">
+          <div class="k">Idle</div>
+          <div class="v">Standby</div>
+          <div class="d">The core sits dim and still — nothing is being recorded or sent anywhere.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">While you talk</div>
+          <div class="v">Listening</div>
+          <div class="d">The core glows cyan and pulses with your voice's own volume in real time.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">While it replies</div>
+          <div class="v">Thinking → Speaking</div>
+          <div class="d">Amber while it reasons, green while the neural voice reads the answer back.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BRAIN VIEW ============ -->
+  <section class="page" id="page-brain">
+    <div class="page-hero">
+      <div class="eyebrow">Brain view</div>
+      <h1>Watch the pipeline think</h1>
+      <p class="lead">A live diagram of what's actually happening between hearing you and answering — not a loading spinner standing in for the real thing.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="pipeline" id="pipelineDiagram">
+        <div class="pstage" data-i="0"><div class="pdot"></div>WAKE</div><div class="parrow">→</div>
+        <div class="pstage" data-i="1"><div class="pdot"></div>VAD</div><div class="parrow">→</div>
+        <div class="pstage" data-i="2"><div class="pdot"></div>STT</div><div class="parrow">→</div>
+        <div class="pstage" data-i="3"><div class="pdot"></div>INTENT</div><div class="parrow">→</div>
+        <div class="pstage" data-i="4"><div class="pdot"></div>EXECUTE</div><div class="parrow">→</div>
+        <div class="pstage" data-i="5"><div class="pdot"></div>RESPOND</div>
+      </div>
+      <div class="stage-detail">
+        <div><div class="sd-k">WAKE → STT</div><div class="sd-v">Fuzzy-matched wake word, then a local Whisper model transcribes your utterance — entirely on-device.</div></div>
+        <div><div class="sd-k">INTENT → EXECUTE</div><div class="sd-v">Your words are checked against ~90 deterministic patterns first. Only unmatched requests fall back to the local language model.</div></div>
+        <div><div class="sd-k">RESPOND</div><div class="sd-v">A neural text-to-speech voice reads the reply back, driving the particle core's color and pulse as it speaks.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FLOW STATE ============ -->
+  <section class="page" id="page-flowstate">
+    <div class="page-hero">
+      <div class="eyebrow">Deep work<span class="nav-new">NEW</span></div>
+      <h1>Lock in. Lime handles the rest.</h1>
+      <p class="lead">One phrase — "start flow state" — and the whole assistant changes behavior for as long as you're in it. Built for actually getting something done, not for ambient vibes.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="flow-demo">
+        <div class="fl"><span class="p">you say</span> &nbsp;"start flow state"</div>
+        <div class="fl"><span class="r">lime</span> &nbsp;&nbsp;&nbsp;Flow state on. I'll stay quiet and to the point until you're done.</div>
+        <div class="flow-widget-mini"><span class="fdot"></span><span class="ft">FLOW STATE · ACTIVE · 47:12</span></div>
+      </div>
+
+      <div class="flow-grid" style="margin-top:36px;">
+        <div class="flow-cell">
+          <div class="fk">Goes quiet</div>
+          <div class="fv">Do Not Disturb engages automatically — <strong>every notification, popup, and ping is silenced</strong> until you end the session. No exceptions to configure.</div>
+        </div>
+        <div class="flow-cell">
+          <div class="fk">Looks different</div>
+          <div class="fv">The dashboard strips down to a <strong>terminal-style look</strong> — decorative texture gone, the orb dims to flat monochrome, the map desaturates, and the chat log turns into plain <span class="mono-inline mono-inline-amber">&gt;</span> / <span class="mono-inline mono-inline-amber">$</span> command lines.</div>
+        </div>
+        <div class="flow-cell">
+          <div class="fk">Talks differently</div>
+          <div class="fv">The AI switches to a <strong>separate, terser personality</strong> reserved only for this mode — short, technical, direct answers. No small talk, no filler.</div>
+        </div>
+        <div class="flow-cell">
+          <div class="fk">Ambient focus tone</div>
+          <div class="fv">A very quiet tone plays for the whole session — <strong>synthesized on the fly</strong>, no audio file, meant to be barely-there background presence.</div>
+        </div>
+        <div class="flow-cell">
+          <div class="fk">Knows when to stop</div>
+          <div class="fv">Say "stop flow state" and it tells you <strong>exactly how long you worked</strong>, with break advice that scales — a quick session gets "your call," 25–90 minutes gets a 10–15 minute break suggestion, 90+ minutes gets a real "step away" nudge.</div>
+        </div>
+        <div class="flow-cell">
+          <div class="fk">Always visible</div>
+          <div class="fv">A dedicated widget shows whether it's on with a <strong>live running timer</strong> — the one widget that never auto-collapses, so status is always one glance away.</div>
+        </div>
+        <div class="flow-cell" style="grid-column:1 / -1;">
+          <div class="fk">Small helpers when it gets hard</div>
+          <div class="fv">Stuck on something? Say <strong>"break this down: &lt;the thing you're stuck on&gt;"</strong> (or "help me with...", "I'm stuck on..."). Lime hands back a tiny numbered action plan — 3 to 5 short, concrete steps, easiest one first — so a hard task gets faster and smarter to start, not just faster to talk about. Still just words on screen: it reads the problem for you, it never touches your files or system on its own.</div>
+        </div>
+      </div>
+
+      <p class="flow-trigger-note">Trigger it by voice ("start flow state," "lock in," "focus mode," "deep work"), the widget's Start button, or <span class="mono-inline mono-inline-accent">Ctrl+Shift+F</span>.</p>
+    </div>
+  </section>
+
+  <!-- ============ MEMORY ============ -->
+  <section class="page" id="page-memory">
+    <div class="page-hero">
+      <div class="eyebrow">Memory</div>
+      <h1>Nothing said once is gone by the next session.</h1>
+      <p class="lead">Three separate systems, so nothing has to be repeated: durable personal facts, a searchable permanent conversation log, and a knowledge base you control.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="readout">
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Facts</span>"remember this — I'm allergic to peanuts" · "what do you remember about me?"</div>
+          <div class="desc">Durable personal facts, saved forever across restarts. Lime also auto-saves facts it notices in passing, without being told to — it doesn't wait for "remember this" every time.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Conversation log</span>"what did we talk about today?" · "what have we talked about?"</div>
+          <div class="desc">Every real exchange is logged with a date, time, and guessed topic, forever — and is actually searched and fed back into the AI's context when relevant, not just stored and forgotten.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Knowledge base</span>"add to my knowledge base: ..." · "what's in my knowledge base?"</div>
+          <div class="desc">A user-editable library — paste in notes, reference docs, anything past the model's training cutoff — that Lime searches and cites when it's relevant to what you asked.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Profile</span>"build my profile"</div>
+          <div class="desc">Synthesizes everything remembered, logged, and stored into one written profile — confirmed facts separated from inferred ones — saved back into the knowledge base.</div>
+        </div>
+      </div>
+      <div class="trust" style="margin-top:28px;">
+        <div class="trust-cell">
+          <div class="k">Where it's stored</div>
+          <div class="v">On your disk</div>
+          <div class="d">Plain local files — no account, no cloud sync, nothing leaves the machine to be remembered.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">How it's found</div>
+          <div class="v">Keyword search</div>
+          <div class="d">No black-box embeddings — matches are score-ranked by shared words, so what gets surfaced is explainable.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Undo</div>
+          <div class="v">"Forget everything"</div>
+          <div class="d">One phrase clears saved memories, any time you want a clean slate.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECURITY ============ -->
+  <section class="page" id="page-security">
+    <div class="page-hero">
+      <div class="eyebrow">Security</div>
+      <h1>Real Defender. Not a custom scanner.</h1>
+      <p class="lead">Lime doesn't reinvent antivirus — it reads and drives the real, built-in Windows Defender that's already protecting your PC.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="readout">
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Status</span>"am I protected?" · "is my antivirus on?" · "what's my security status?"</div>
+          <div class="desc">Reads Windows Defender's actual real-time protection status directly — the same state you'd see in Windows Security, spoken back to you.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Threats</span>"any recent threats?"</div>
+          <div class="desc">Pulls Defender's own recent-threat-detection history — nothing fabricated, nothing guessed.</div>
+        </div>
+        <div class="row">
+          <div class="status"></div>
+          <div class="trigger"><span class="tag">Scan</span>"scan my computer for viruses" · "run a virus scan"</div>
+          <div class="desc">Kicks off a real Windows Defender quick scan in the background and lets you know when it's done.</div>
+        </div>
+      </div>
+      <div class="trust" style="margin-top:28px;">
+        <div class="trust-cell">
+          <div class="k">Engine</div>
+          <div class="v">Windows Defender</div>
+          <div class="d">The OS's own antivirus, wrapped — not a separate, unproven scanning engine.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Access</div>
+          <div class="v">Read + trigger only</div>
+          <div class="d">Lime can ask Defender for status and start a scan — it can't change settings or disable protection.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Automation API</div>
+          <div class="v">127.0.0.1 only</div>
+          <div class="d">A local, key-gated HTTP API for tools like n8n — bound to localhost, never reachable from outside your machine.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LOCAL-FIRST ============ -->
+  <section class="page" id="page-privacy">
+    <div class="page-hero">
+      <div class="eyebrow">Local-first, by design</div>
+      <h1>The model can talk. It can't act.</h1>
+      <p class="lead">Real actions — opening apps, setting reminders, controlling devices — are handled by deterministic pattern matching, never improvised by the language model. Voice recognition and reasoning both make mistakes; giving that combination unchecked execution power was a deliberate no.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="trust">
+        <div class="trust-cell">
+          <div class="k">Speech recognition</div>
+          <div class="v">Local Whisper</div>
+          <div class="d">Runs on-device via ONNX. Audio never leaves your PC.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Reasoning</div>
+          <div class="v">Local Ollama</div>
+          <div class="d">Qwen2.5, running fully offline for open-ended questions.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Real actions</div>
+          <div class="v">Deterministic only</div>
+          <div class="d">Pattern-matched commands, never AI-improvised execution.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="page" id="page-faq">
+    <div class="page-hero">
+      <div class="eyebrow">FAQ</div>
+      <h1>Common questions</h1>
+      <p class="lead">The things people actually ask before installing a voice assistant that lives on their desktop.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="faq-list">
+        <div class="faq-item">
+          <div class="q"><span>Does Lime send my voice or data anywhere?</span><span class="idx">+</span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">No, by default. Speech recognition (Whisper) and reasoning (Ollama) both run locally on your machine. The only outbound requests are for things that are inherently online — weather, news, Spotify search — and none of those carry your voice.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Is it free?</span><span class="idx">+</span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Yes. No account, no subscription, no login screen.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>What are the system requirements?</span><span class="idx">+</span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Windows 10 or 11, 8GB RAM minimum (16GB+ recommended if you want the larger local language model), and a microphone. A GPU speeds up responses but isn't required.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Can it actually control my computer?</span><span class="idx">+</span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Within a fixed, deterministic command set — yes: opening apps and files, media/volume control, screenshots, smart-home devices, reminders. It will never improvise a system action from a guess; anything outside its known commands gets a spoken answer, not an attempted action.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Does it work without internet?</span><span class="idx">+</span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">The core assistant does — wake word, transcription, and open-ended conversation all run offline. Weather, world news, and smart-home pairing need a connection, same as any app that talks to those services.</div></div></div>
+        </div>
+        <div class="faq-item">
+          <div class="q"><span>Can I automate it with other tools?</span><span class="idx">+</span></div>
+          <div class="a-wrap"><div class="a-inner"><div class="a">Yes — Lime runs a small local API (key-protected, bound to your own machine) that tools like n8n can call to ask it questions or trigger real commands.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section class="page" id="page-about">
+    <div class="page-hero">
+      <div class="eyebrow">About</div>
+      <h1>Built by one person, for their own desk.</h1>
+      <p class="lead">Lime isn't a company product — it's a solo, ongoing build, made by someone who wanted a voice assistant that actually respected the "local-first" part.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="about-card">
+        <div class="about-avatar">D</div>
+        <div class="about-body">
+          <div class="about-name">Daniel Deniz Akıncı <span class="about-handle">— Denizprof</span></div>
+          <div class="about-role">15-year-old high school student, Istanbul</div>
+          <p>Hi, I'm Daniel. I build Lime by myself, on my own time — it's not a company or a team, just a personal project I've kept pushing on. It started as an experiment to see how far a fully local, privacy-respecting assistant could go with no cloud LLM, no account, and no telemetry, and it's grown one real feature at a time from there: persistent memory, a live world-data monitor, an honest deterministic command system, and most recently Flow State.</p>
+          <p>The "real, not fabricated" rule that runs through this whole site is mine: real Windows Defender instead of a fake scanner, real USGS/BBC/NASA feeds instead of invented news, real deterministic pattern matching instead of letting a language model improvise system actions.</p>
+          <p>I use Claude, Gemini, ChatGPT, and a few other AI models and tools to help me build faster — but every design decision, every architecture choice, and everything Lime looks and feels like is mine. AI is a tool I use, not the thing doing the building. I'm the one deciding what Lime becomes.</p>
+        </div>
+      </div>
+      <div class="trust" style="margin-top:28px;">
+        <div class="trust-cell">
+          <div class="k">Status</div>
+          <div class="v">Actively developed</div>
+          <div class="d">New features ship in small, real batches — this site is updated alongside the app, not separately from it.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Built with</div>
+          <div class="v">Electron + local models</div>
+          <div class="d">Whisper for speech, Ollama for reasoning, Edge neural TTS for voice — all running on-device.</div>
+        </div>
+        <div class="trust-cell">
+          <div class="k">Philosophy</div>
+          <div class="v">Local-first, always</div>
+          <div class="d">If a feature can't be done honestly and locally, it doesn't ship — it stays a deep link or gets left out.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="page" id="page-download">
+    <div class="page-hero">
+      <div class="eyebrow">Get Lime</div>
+      <h1>Download for Windows</h1>
+      <p class="lead">Free. Runs offline. No account, no login, no cloud dependency for the core assistant.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <div class="dl-panel">
+        <div>
+          <h3>Lime for Windows</h3>
+          <p>Windows 10/11 · 8GB RAM minimum · microphone required</p>
+          <div class="terminal-line"><span class="p">C:\&gt;</span> Lime-Setup.exe</div>
+          <div class="dl-note">⚠ Installer link not live yet — this build hasn't been packaged for distribution. Swap this button's href for your real release URL once one exists.</div>
+        </div>
+        <a class="btn-download" href="#" data-download-placeholder>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+          Download (coming soon)
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <div class="brand"><span class="brand-dot" style="width:6px;height:6px;"></span>LIME</div>
+    <div>Developed by Denizprof</div>
+    <div>&copy; <span id="copyYear">2026</span> Daniel Deniz Akıncı. All rights reserved.</div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var copyYearEl = document.getElementById('copyYear');
+  if(copyYearEl) copyYearEl.textContent = new Date().getFullYear();
+
+  // ---------------------------------------------------------------
+  // Router — real separate pages (no anchor-scrolling one long page).
+  // Nav switches which .page is visible and jumps scroll to the top.
+  // ---------------------------------------------------------------
+  var pages = ['home','commands','gui','brain','flowstate','memory','security','privacy','faq','about','download'];
+
+  // scroll-reveal: fades/slides sections in as they cross into view, only
+  // needs to be (re-)armed for whichever page just became visible
+  var revealObserver = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); revealObserver.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  function armReveals(pageEl){
+    if(reduceMotion || !pageEl) return;
+    pageEl.querySelectorAll('.block, .row, .trust-cell, .flow-cell, .navcard').forEach(function(el, i){
+      if(el.classList.contains('reveal')) return;
+      el.classList.add('reveal');
+      el.style.transitionDelay = Math.min(i*35, 260) + 'ms';
+      revealObserver.observe(el);
+    });
+  }
+
+  function moveUnderline(btn){
+    var line = document.getElementById('navUnderline');
+    if(!line || !btn) return;
+    var navRect = btn.parentElement.getBoundingClientRect();
+    var r = btn.getBoundingClientRect();
+    line.style.left = (r.left - navRect.left) + 'px';
+    line.style.width = r.width + 'px';
+    line.classList.add('show');
+  }
+
+  function showPage(name){
+    if(pages.indexOf(name)===-1) name='home';
+    var current = document.querySelector('.page.active');
+    var next = document.getElementById('page-'+name);
+    if(current && current !== next && !reduceMotion){
+      current.classList.add('leaving');
+      current.classList.remove('active');
+      setTimeout(function(){ current.classList.remove('leaving'); }, 380);
+    } else if(current){
+      current.classList.remove('active');
+    }
+    if(next) next.classList.add('active');
+    document.querySelectorAll('nav button[data-nav]').forEach(function(b){
+      var isActive = b.getAttribute('data-nav')===name;
+      b.classList.toggle('active', isActive);
+      if(isActive) moveUnderline(b);
+    });
+    window.scrollTo(0,0);
+    if(next) armReveals(next);
+  }
+  document.querySelectorAll('[data-nav]').forEach(function(el){
+    el.addEventListener('click', function(){
+      var name = el.getAttribute('data-nav');
+      history.pushState(null,'','#'+name);
+      showPage(name);
+    });
+  });
+  window.addEventListener('popstate', function(){
+    showPage((location.hash||'#home').slice(1));
+  });
+  window.addEventListener('resize', function(){
+    var activeBtn = document.querySelector('nav button[data-nav].active');
+    if(activeBtn) moveUnderline(activeBtn);
+  });
+  showPage((location.hash||'#home').slice(1));
+
+  // ---------------------------------------------------------------
+  // Header: gains a solid background + border once the page scrolls,
+  // so the nav stays legible over whatever content is underneath it.
+  // rAF-throttled so scrolling never triggers layout thrash.
+  // ---------------------------------------------------------------
+  function setupHeaderScroll(){
+    var header = document.querySelector('header');
+    var ticking = false;
+    function apply(){ header.classList.toggle('scrolled', window.scrollY > 8); ticking = false; }
+    window.addEventListener('scroll', function(){
+      if(!ticking){ requestAnimationFrame(apply); ticking = true; }
+    }, { passive:true });
+  }
+  setupHeaderScroll();
+
+  // ---------------------------------------------------------------
+  // Card hover lighting: tracks the pointer inside each navcard and
+  // exposes it as CSS vars so the radial glow in ::before follows it.
+  // ---------------------------------------------------------------
+  function setupHoverLighting(){
+    if(reduceMotion) return;
+    document.querySelectorAll('.navcard').forEach(function(card){
+      card.addEventListener('pointermove', function(e){
+        var r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
+  }
+  setupHoverLighting();
+
+  // ---------------------------------------------------------------
+  // FAQ accordion: smooth height/opacity animation via a grid-rows
+  // trick (animating from 0fr to 1fr), no fixed pixel heights needed.
+  // ---------------------------------------------------------------
+  function setupFaqAccordion(){
+    document.querySelectorAll('.faq-item').forEach(function(item){
+      var q = item.querySelector('.q');
+      q.addEventListener('click', function(){ item.classList.toggle('open'); });
+    });
+  }
+  setupFaqAccordion();
+
+  // ---------------------------------------------------------------
+  // Real 3D particle globe, bottom-left — same corner convention the
+  // actual app uses for its own orb.
+  // ---------------------------------------------------------------
+  var host = document.getElementById('orbHost');
+  var W = host.clientWidth || 560, H = host.clientHeight || 560;
+
+  var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.setSize(W,H);
+  host.appendChild(renderer.domElement);
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(38, W/H, 0.1, 100);
+  camera.position.set(0,0,7.4);
+
+  var group = new THREE.Group();
+  scene.add(group);
+
+  var N = 320, positions = new Float32Array(N*3);
+  var golden = Math.PI*(3-Math.sqrt(5));
+  for(var i=0;i<N;i++){
+    var y = 1-(i/(N-1))*2;
+    var r = Math.sqrt(Math.max(0,1-y*y));
+    var t = golden*i;
+    positions[i*3]=Math.cos(t)*r*2.4; positions[i*3+1]=y*2.4; positions[i*3+2]=Math.sin(t)*r*2.4;
+  }
+  var pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  var pMat = new THREE.PointsMaterial({ color:0x6fc3ff, size:0.052, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false });
+  group.add(new THREE.Points(pGeo, pMat));
+
+  var shellGeo = new THREE.IcosahedronGeometry(2.4, 2);
+  var shellMat = new THREE.MeshBasicMaterial({ color:0x6fc3ff, wireframe:true, transparent:true, opacity:0.14 });
+  group.add(new THREE.Mesh(shellGeo, shellMat));
+
+  // two thin orbital rings on different axes, for a sense of an
+  // instrument/system rather than a plain glowing ball
+  var ringMat = new THREE.LineBasicMaterial({ color:0x6fc3ff, transparent:true, opacity:0.22 });
+  function makeRing(radius, tiltX, tiltZ){
+    var pts = [];
+    for(var a=0;a<=64;a++){ var th=(a/64)*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(th)*radius,0,Math.sin(th)*radius)); }
+    var geo = new THREE.BufferGeometry().setFromPoints(pts);
+    var ring = new THREE.LineLoop(geo, ringMat);
+    ring.rotation.x = tiltX; ring.rotation.z = tiltZ;
+    return ring;
+  }
+  var ringA = makeRing(3.05, Math.PI/2.4, 0.3);
+  var ringB = makeRing(3.4, Math.PI/2.9, -0.6);
+  group.add(ringA, ringB);
+
+  var coreMat = new THREE.SpriteMaterial({
+    map:(function(){
+      var c=document.createElement('canvas'); c.width=c.height=256;
+      var g=c.getContext('2d').createRadialGradient(128,128,0,128,128,128);
+      g.addColorStop(0,'rgba(111,195,255,0.9)'); g.addColorStop(0.4,'rgba(111,195,255,0.35)'); g.addColorStop(1,'rgba(111,195,255,0)');
+      var cx=c.getContext('2d'); cx.fillStyle=g; cx.fillRect(0,0,256,256);
+      return new THREE.CanvasTexture(c);
+    })(),
+    transparent:true, blending:THREE.AdditiveBlending, depthWrite:false
+  });
+  var core = new THREE.Sprite(coreMat);
+  core.scale.set(3.2,3.2,1);
+  group.add(core);
+
+  // mouse parallax — the core tilts toward the cursor, capped to a small
+  // angle (roughly 3-6 degrees) so it reads as depth, not a toy
+  var mouseX=0, mouseY=0;
+  var MAX_TILT = 0.09; // radians, ~5.2deg
+  window.addEventListener('mousemove', function(e){
+    mouseX = (e.clientX/window.innerWidth - 0.5) * 2 * MAX_TILT;
+    mouseY = (e.clientY/window.innerHeight - 0.5) * 2 * MAX_TILT;
+  });
+  var curTiltX=0, curTiltY=0;
+
+  function resize(){
+    W = host.clientWidth||560; H = host.clientHeight||560;
+    renderer.setSize(W,H);
+    camera.aspect = W/H; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', function(){ setTimeout(resize,150); });
+
+  // pause the render loop when the orb is off-screen or the tab is hidden
+  var orbVisible = true;
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(entries){ orbVisible = entries[0].isIntersecting; }, { threshold:0.01 }).observe(host);
+  }
+  document.addEventListener('visibilitychange', function(){ orbVisible = orbVisible && !document.hidden; });
+
+  // scroll-based hero transform: the core drifts up, shrinks, and fades
+  // slightly as the hero scrolls out of view — rAF-throttled
+  var scrollTicking = false;
+  function applyScrollTransform(){
+    var heroEl = document.querySelector('.hero');
+    if(heroEl){
+      var p = Math.min(1, Math.max(0, window.scrollY / (heroEl.offsetHeight * 0.9 || 1)));
+      host.style.transform = 'translateY(' + (-p*40) + 'px) scale(' + (1 - p*0.12) + ')';
+      host.style.opacity = String(0.95 - p*0.55);
+    }
+    scrollTicking = false;
+  }
+  window.addEventListener('scroll', function(){
+    if(reduceMotion) return;
+    if(!scrollTicking){ requestAnimationFrame(applyScrollTransform); scrollTicking = true; }
+  }, { passive:true });
+
+  var clock = new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!orbVisible || document.hidden){ return; } // paused: skip render + math entirely
+    var dt = clock.getDelta();
+    if(!reduceMotion){
+      group.rotation.y += dt*0.18;
+      curTiltX += (mouseY - curTiltX) * Math.min(1, dt*4);
+      curTiltY += (mouseX - curTiltY) * Math.min(1, dt*4);
+      group.rotation.x = Math.sin(clock.elapsedTime*0.3)*0.12 + curTiltX;
+      group.rotation.z = curTiltY * 0.4;
+      ringA.rotation.y += dt*0.12;
+      ringB.rotation.y -= dt*0.08;
+    }
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // ---- brain pipeline: step through stages to feel alive at rest ----
+  var stages = document.querySelectorAll('#pipelineDiagram .pstage');
+  var idx = 0;
+  function step(){
+    stages.forEach(function(s,i){ s.classList.toggle('on', i<=idx); });
+    idx = (idx+1) % (stages.length+2);
+  }
+  step();
+  if(!reduceMotion) setInterval(step, 650);
+})();
+</script>
+</body>
+</html>
