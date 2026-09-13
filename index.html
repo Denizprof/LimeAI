@@ -13,7 +13,7 @@
 <meta name="twitter:title" content="Lime — local-first voice assistant">
 <meta name="twitter:description" content="A Jarvis-style desktop assistant that keeps speech recognition and reasoning on your own PC.">
 <meta name="twitter:image" content="dashboard-screenshot.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2016%22 fill=%22%23060c1a%22/><circle cx=%2216%22 cy=%2216%22 r=%228%22 fill=%22%236fc3ff%22/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2216%22 fill=%22%23060c1a%22/><circle cx=%2216%22 cy=%2216%22 r=%228%22 fill=%22%236fc3ff%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -326,6 +326,27 @@
     border-radius:8px;padding:1px 5px;vertical-align:2px;animation:newpulse 2s ease-in-out infinite;
   }
   @keyframes newpulse{0%,100%{opacity:.75}50%{opacity:1}}
+  /* ---------- local-first data-flow diagram ---------- */
+  .flow-diagram{margin-bottom:18px;}
+  .fd-label{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;}
+  .flow-diagram-yes .fd-label{color:var(--green);}
+  .fd-boundary{border:1px dashed var(--border-strong);border-radius:12px;padding:26px 20px 20px;position:relative;background:rgba(125,227,200,0.03);}
+  .fd-boundary-tag{position:absolute;top:-10px;left:16px;background:var(--bg);padding:0 8px;font-family:'JetBrains Mono';font-size:10px;letter-spacing:0.1em;color:var(--green);text-transform:uppercase;}
+  .fd-row{display:flex;align-items:center;gap:0;}
+  .fd-node{flex:1;text-align:center;font-family:'Unbounded';font-size:14px;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .fd-node-main{color:var(--accent);}
+  .fd-dot-node{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);}
+  .fd-node-main .fd-dot-node{background:var(--accent);box-shadow:0 0 10px var(--accent);}
+  .fd-line{flex:1.2;height:2px;background:linear-gradient(90deg, var(--border-strong), var(--border-strong));position:relative;margin-bottom:26px;}
+  .fd-pulse{position:absolute;top:50%;left:0;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);transform:translateY(-50%);animation:fdTravel 1.8s ease-in-out infinite;}
+  @keyframes fdTravel{0%{left:0;opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{left:calc(100% - 8px);opacity:0;}}
+  .flow-diagram-no{opacity:0.55;}
+  .flow-diagram-no .fd-row{padding:0 4px;}
+  .fd-node.fd-dim{color:var(--text-faint);text-decoration:line-through;font-family:'Unbounded';font-size:13px;flex:1;text-align:center;}
+  .fd-line-dim{flex:1.2;height:2px;background:repeating-linear-gradient(90deg, var(--text-faint) 0 6px, transparent 6px 12px);margin-bottom:0;}
+  @media (prefers-reduced-motion:reduce){ .fd-pulse{animation:none;opacity:0.6;} }
+  @media (max-width:640px){ .fd-node{font-size:12px;} .fd-line,.fd-line-dim{flex:0.6;} }
+
   .about-card{display:flex;gap:24px;align-items:flex-start;border:1px solid var(--border);border-radius:14px;padding:30px;background:var(--bg-panel);}
   .about-avatar{
     flex:none;width:64px;height:64px;border-radius:50%;
@@ -334,6 +355,11 @@
     display:flex;align-items:center;justify-content:center;
     font-family:'Unbounded';font-size:24px;color:#eaf6ff;
   }
+  .changelog{border-left:2px solid var(--border-strong);}
+  .cl-item{position:relative;padding:0 0 22px 22px;}
+  .cl-item::before{content:'';position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  .cl-tag{font-family:'JetBrains Mono';font-size:11px;letter-spacing:0.1em;color:var(--accent);text-transform:uppercase;}
+  .cl-text{margin-top:6px;font-size:13.5px;color:var(--text-dim);line-height:1.6;max-width:600px;}
   .about-name{font-family:'Unbounded';font-size:19px;color:var(--text);}
   .about-name .about-handle{font-family:'JetBrains Mono';font-size:13px;color:var(--text-faint);font-weight:400;}
   .about-role{font-family:'JetBrains Mono';font-size:11.5px;letter-spacing:0.06em;color:#6fc3ff;margin-top:4px;text-transform:uppercase;}
@@ -811,7 +837,30 @@
       <p class="lead">Real actions — opening apps, setting reminders, controlling devices — are handled by deterministic pattern matching, never improvised by the language model. Voice recognition and reasoning both make mistakes; giving that combination unchecked execution power was a deliberate no.</p>
     </div>
     <div class="block" style="padding-top:8px;">
-      <div class="trust">
+      <div class="flow-diagram flow-diagram-yes">
+        <div class="fd-label">What actually happens</div>
+        <div class="fd-boundary">
+          <div class="fd-boundary-tag">on your PC</div>
+          <div class="fd-row">
+            <div class="fd-node"><div class="fd-dot-node"></div>Device</div>
+            <div class="fd-line"><span class="fd-pulse"></span></div>
+            <div class="fd-node fd-node-main"><div class="fd-dot-node"></div>Lime</div>
+            <div class="fd-line"><span class="fd-pulse" style="animation-delay:0.9s;"></span></div>
+            <div class="fd-node"><div class="fd-dot-node"></div>Local processing</div>
+          </div>
+        </div>
+      </div>
+      <div class="flow-diagram flow-diagram-no">
+        <div class="fd-label">What doesn't happen</div>
+        <div class="fd-row">
+          <div class="fd-node fd-dim">Device</div>
+          <div class="fd-line fd-line-dim"></div>
+          <div class="fd-node fd-dim">Cloud</div>
+          <div class="fd-line fd-line-dim"></div>
+          <div class="fd-node fd-dim">Unknown server</div>
+        </div>
+      </div>
+      <div class="trust" style="margin-top:28px;">
         <div class="trust-cell">
           <div class="k">Speech recognition</div>
           <div class="v">Local Whisper</div>
@@ -901,6 +950,26 @@
           <div class="k">Philosophy</div>
           <div class="v">Local-first, always</div>
           <div class="d">If a feature can't be done honestly and locally, it doesn't ship — it stays a deep link or gets left out.</div>
+        </div>
+      </div>
+
+      <div class="changelog" style="margin-top:28px;">
+        <div class="fd-label" style="margin-bottom:14px;">Recent updates</div>
+        <div class="cl-item">
+          <div class="cl-tag">Flow State</div>
+          <div class="cl-text">A focus mode that silences notifications and strips the dashboard down — now also gives a short numbered action plan on request when you're stuck mid-task.</div>
+        </div>
+        <div class="cl-item">
+          <div class="cl-tag">Security</div>
+          <div class="cl-text">Real Windows Defender integration — status checks and quick scans wrap the OS's own antivirus, not a custom scanner.</div>
+        </div>
+        <div class="cl-item">
+          <div class="cl-tag">Memory</div>
+          <div class="cl-text">Facts get auto-saved without needing "remember this" every time, and a full conversation log is searchable and actually reused in answers.</div>
+        </div>
+        <div class="cl-item">
+          <div class="cl-tag">World Monitor</div>
+          <div class="cl-text">Live earthquakes (USGS), world news (BBC), science headlines, and NASA's picture of the day, plotted on a real map.</div>
         </div>
       </div>
     </div>
