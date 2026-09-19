@@ -1,0 +1,10 @@
+name = "lime-feedback"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+FEEDBACK_REPO = "Denizprof/LimeAI-feedback"
+FEEDBACK_BRANCH = "main"
+
+# The GitHub token is NOT here. Add it as a secret:
+#   npx wrangler secret put GITHUB_TOKEN

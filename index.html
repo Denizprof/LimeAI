@@ -117,17 +117,27 @@
   .brand{flex:none;display:flex;align-items:center;gap:10px;font-family:'Unbounded';font-weight:700;letter-spacing:0.16em;font-size:16px;background:none;border:none;color:var(--text);cursor:pointer;padding:0;}
   .brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2.4s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-  nav{display:flex;gap:4px;font-size:13px;color:var(--text-dim);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%;}
+  /* "Electric nav": no boxes — just labels, with a glowing arc that surges
+     between the active tabs (drawn on a canvas by setupElectricNav()).
+     nav gets bottom padding (offset by a negative margin so the header's
+     vertical centering doesn't change) to leave room for the arc + glow. */
+  nav{display:flex;gap:2px;font-size:13px;color:var(--text-dim);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%;
+    position:relative;padding-bottom:12px;margin-bottom:-12px;}
   nav::-webkit-scrollbar{display:none;}
   nav button{
-    background:none;border:1px solid transparent;color:var(--text-dim);cursor:pointer;
-    padding:8px 12px;border-radius:7px;font-size:13px;white-space:nowrap;flex:none;
+    background:none;border:none;color:var(--text-dim);cursor:pointer;
+    padding:8px 13px;border-radius:7px;font-size:13px;font-weight:500;white-space:nowrap;flex:none;
     display:inline-flex;align-items:center;gap:4px;
-    transition:color .15s,border-color .15s,background .15s;
+    transition:color var(--dur-micro) var(--ease-out);
   }
   nav button:hover{color:var(--text);}
-  nav button.active{color:var(--accent);border-color:var(--border-strong);background:rgba(var(--accent-rgb),0.06);}
-  @media (max-width:760px){ nav{gap:2px;} nav button{padding:8px 9px;font-size:12px;} }
+  nav button.active{color:#fff;}
+  canvas.nav-surge{position:absolute;left:0;top:0;pointer-events:none;}
+  /* static fallback arc — shown until the canvas has painted (or if JS/canvas is unavailable) */
+  nav.no-surge button.active::after{content:'';position:absolute;left:50%;bottom:0;width:44px;height:2px;transform:translateX(-50%);
+    background:#fff;border-radius:2px;box-shadow:0 0 6px 1px rgba(255,255,255,.85),0 0 14px 3px rgba(var(--accent-rgb),.65);}
+  nav.no-surge button{position:relative;}
+  @media (max-width:760px){ nav{gap:0;} nav button{padding:8px 10px;font-size:12px;} }
 
   /* ---------- page shell / router ---------- */
   .page{display:none;}
@@ -136,12 +146,6 @@
   @keyframes pagein{from{opacity:0;transform:translateY(20px);filter:blur(6px);}to{opacity:1;transform:none;filter:blur(0);}}
   @keyframes pageout{from{opacity:1;transform:none;filter:blur(0);}to{opacity:0;transform:translateY(-10px);filter:blur(4px);}}
   @media (prefers-reduced-motion:reduce){ .page.active,.page.leaving{animation:none;} }
-
-  /* nav underline that glides between active tabs */
-  nav{position:relative;}
-  .nav-underline{position:absolute;bottom:-1px;height:2px;background:var(--accent);border-radius:2px;
-    transition:left .32s cubic-bezier(.3,.8,.2,1),width .32s cubic-bezier(.3,.8,.2,1);opacity:0;pointer-events:none;}
-  .nav-underline.show{opacity:1;}
 
   /* scroll-reveal: elements ease in as they enter the viewport */
   .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.2,1);}
@@ -178,7 +182,16 @@
     font-size:13.5px;border:1px solid var(--border);padding:13px 20px;border-radius:8px;
     background:none;cursor:pointer;transition:border-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out);
   }
-  .btn-ghost:hover{color:var(--accent);border-color:var(--border-strong);transform:translateY(-1px);}
+  .btn-ghost{position:relative;}
+  /* same white-core / blue-glow arc as the nav, surging out from the centre on hover */
+  .btn-ghost::after,.dl-copy-btn::after{
+    content:'';position:absolute;left:50%;bottom:-1px;width:44px;height:2px;border-radius:2px;
+    background:#fff;transform:translateX(-50%) scaleX(0);opacity:0;
+    box-shadow:0 0 6px 1px rgba(255,255,255,.85),0 0 14px 3px rgba(var(--accent-rgb),.65);
+    transition:transform var(--dur-normal) var(--ease-out),opacity var(--dur-micro) ease;
+  }
+  .btn-ghost:hover::after,.dl-copy-btn:hover::after{transform:translateX(-50%) scaleX(1);opacity:1;}
+  .btn-ghost:hover{color:#fff;border-color:var(--border-strong);transform:translateY(-1px);}
   .btn-ghost:active{transform:translateY(0) scale(0.98);}
   .req-note{font-size:12px;color:var(--text-faint);}
 
@@ -426,6 +439,85 @@
   .terminal-line .p{color:var(--green);}
   .dl-note{margin-top:18px;font-size:12px;color:var(--text-faint);max-width:420px;}
 
+  /* ---------- feedback form ---------- */
+  .fb-form{max-width:680px;background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:28px;position:relative;}
+  .fb-label{display:block;margin:20px 0 8px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint);}
+  .fb-form > .fb-label:first-child{margin-top:0;}
+  .fb-opt{text-transform:none;letter-spacing:0;color:var(--text-faint);font-size:11.5px;}
+  .fb-types{display:flex;flex-wrap:wrap;gap:8px;}
+  .fb-chip{position:relative;cursor:pointer;}
+  .fb-chip input{position:absolute;opacity:0;inset:0;cursor:pointer;}
+  .fb-chip span{display:inline-block;padding:8px 16px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--text-dim);
+    transition:color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),background var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out);}
+  .fb-chip:hover span{color:var(--text);border-color:var(--border-strong);}
+  .fb-chip input:checked + span{color:#fff;border-color:var(--accent);background:rgba(var(--accent-rgb),0.10);box-shadow:0 0 14px -2px rgba(var(--accent-rgb),0.55);}
+  .fb-chip input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px;}
+  .fb-input{
+    width:100%;background:#04070f;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 14px;
+    font-family:'Manrope',system-ui,sans-serif;font-size:14.5px;line-height:1.55;resize:vertical;
+    transition:border-color var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out);
+  }
+  .fb-input::placeholder{color:var(--text-faint);}
+  .fb-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.16);}
+  .fb-count{margin-top:6px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);}
+  .fb-count.near{color:var(--amber);}
+  .fb-hp{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
+  .fb-actions{margin-top:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .fb-send{
+    position:relative;background:none;cursor:pointer;color:#fff;font-size:14px;font-weight:600;letter-spacing:0.02em;
+    border:1px solid var(--accent);border-radius:8px;padding:12px 24px;
+    transition:transform var(--dur-micro) var(--ease-out),background var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out);
+  }
+  .fb-send::after{
+    content:'';position:absolute;left:50%;bottom:-1px;width:44px;height:2px;border-radius:2px;background:#fff;
+    transform:translateX(-50%) scaleX(0);opacity:0;
+    box-shadow:0 0 6px 1px rgba(255,255,255,.85),0 0 14px 3px rgba(var(--accent-rgb),.65);
+    transition:transform var(--dur-normal) var(--ease-out),opacity var(--dur-micro) ease;
+  }
+  .fb-send:hover:not(:disabled){background:rgba(var(--accent-rgb),0.10);transform:translateY(-1px);box-shadow:0 0 18px -4px rgba(var(--accent-rgb),.6);}
+  .fb-send:hover:not(:disabled)::after{transform:translateX(-50%) scaleX(1);opacity:1;}
+  .fb-send:active:not(:disabled){transform:translateY(0) scale(0.98);}
+  .fb-send:disabled{opacity:0.45;cursor:not-allowed;}
+  .fb-status{font-size:13.5px;color:var(--text-dim);min-height:1.4em;}
+  .fb-status.ok{color:var(--green);}
+  .fb-status.err{color:var(--amber);}
+  .fb-privacy{margin:20px 0 0;font-size:12px;color:var(--text-faint);max-width:520px;}
+  @media (prefers-reduced-motion:reduce){ .fb-send,.fb-send::after,.fb-chip span,.fb-input{transition:none;} }
+
+  /* ---------- ring → bar download button ---------- */
+  .rb-panel{margin-top:20px;background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:30px 28px 26px;}
+  .rb-head h3{font-size:24px;}
+  .rb-head p{color:var(--text-dim);font-size:14.5px;margin:10px 0 0;max-width:560px;}
+  .rb-stage{
+    position:relative;display:block;width:100%;max-width:640px;margin:22px auto 0;cursor:pointer;color:var(--text);
+    border:1px solid var(--border);border-radius:16px;padding:14px 14px 20px;text-align:center;
+    background:radial-gradient(ellipse 70% 55% at 50% 38%, rgba(var(--accent-rgb),0.13), transparent 70%),linear-gradient(180deg,#060c1a 0%,#0b1730 100%);
+    transition:border-color var(--dur-normal) var(--ease-soft),box-shadow var(--dur-normal) var(--ease-soft);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .rb-stage:hover{border-color:var(--border-strong);box-shadow:0 0 40px -12px rgba(var(--accent-rgb),0.45);}
+  .rb-stage:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}
+  .rb-svg{display:block;width:100%;height:auto;overflow:visible;}
+  .rb-track{stroke:var(--accent);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;transition:filter var(--dur-normal) ease;}
+  .rb-stage.is-idle .rb-track{filter:drop-shadow(0 0 7px rgba(var(--accent-rgb),.55));}
+  .rb-stage.is-idle:hover .rb-track{filter:drop-shadow(0 0 12px rgba(var(--accent-rgb),.85));}
+  .rb-fill-glow{stroke:rgba(var(--accent-rgb),.6);stroke-width:13;stroke-linecap:round;stroke-linejoin:round;filter:blur(4px);opacity:0;}
+  .rb-fill-core{stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;opacity:0;}
+  .rb-arrow-shape{stroke:#fff;stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;}
+  .rb-arrow{filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.7));transition:opacity var(--dur-normal) ease;}
+  .rb-stage.is-idle .rb-bob{animation:rbBob 1.8s ease-in-out infinite;}
+  .rb-stage.is-idle:hover .rb-bob{animation-duration:.9s;}
+  @keyframes rbBob{0%,100%{transform:translateY(-2px);}50%{transform:translateY(3px);}}
+  .rb-check{stroke:var(--green);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:0;filter:drop-shadow(0 0 7px rgba(var(--green-rgb),.75));transition:opacity var(--dur-normal) ease;}
+  .rb-stage.is-done .rb-check{opacity:1;}
+  .rb-stage.is-done .rb-arrow{opacity:0;}
+  .rb-status{margin-top:-6px;font-size:14px;color:var(--text-dim);min-height:1.4em;}
+  .rb-stage.is-done .rb-status{color:var(--green);}
+  .rb-file{margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;letter-spacing:0.04em;color:var(--text-faint);}
+  .rb-note{margin:18px auto 0;max-width:640px;text-align:center;}
+  .rb-note a{color:var(--accent);}
+  @media (prefers-reduced-motion:reduce){ .rb-stage.is-idle .rb-bob{animation:none;} }
+
   .dl-quick{background:var(--bg-panel);border:1px solid var(--border-strong);border-radius:14px;padding:26px 28px;}
   .dl-quick-label{font-family:'Unbounded';font-size:14px;}
   .dl-quick-cmd{
@@ -435,7 +527,7 @@
   }
   .dl-quick-cmd code{white-space:nowrap;}
   .dl-copy-btn{
-    flex:none;background:none;border:1px solid var(--border-strong);color:var(--text-dim);
+    flex:none;position:relative;background:none;border:1px solid var(--border-strong);color:var(--text-dim);
     font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;
     transition:color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),background var(--dur-micro) var(--ease-out);
   }
@@ -466,9 +558,9 @@
       <button data-nav="security">Security</button>
       <button data-nav="privacy">Local-first</button>
       <button data-nav="faq">FAQ</button>
+      <button data-nav="feedback">Feedback</button>
       <button data-nav="about">About</button>
       <button data-nav="download">Download</button>
-      <div class="nav-underline" id="navUnderline"></div>
     </nav>
   </div>
 </header>
@@ -951,6 +1043,42 @@
           <div class="a-wrap"><div class="a-inner"><div class="a">Not currently — Lime is Windows-only (10/11). Several of its system commands (screenshots, Wi-Fi status, now-playing info) use Windows-specific APIs directly.</div></div></div>
         </div>
       </div>
+      <p class="flow-trigger-note" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">Still have a question, or an idea? <button class="btn-ghost" data-nav="feedback" type="button">Send feedback →</button></p>
+    </div>
+  </section>
+
+  <!-- ============ FEEDBACK ============ -->
+  <section class="page" id="page-feedback">
+    <div class="page-hero">
+      <div class="eyebrow">Feedback</div>
+      <h1>Tell me what to build next.</h1>
+      <p class="lead">Bugs, ideas, things that annoyed you. It goes to a private inbox that only the developer can open — nothing you write here is shown publicly.</p>
+    </div>
+    <div class="block" style="padding-top:8px;">
+      <form class="fb-form" id="fbForm" novalidate>
+        <div class="fb-label" id="fbTypeLabel">What kind?</div>
+        <div class="fb-types" role="radiogroup" aria-labelledby="fbTypeLabel">
+          <label class="fb-chip"><input type="radio" name="fbType" value="idea" checked><span>Idea</span></label>
+          <label class="fb-chip"><input type="radio" name="fbType" value="bug"><span>Bug</span></label>
+          <label class="fb-chip"><input type="radio" name="fbType" value="praise"><span>Praise</span></label>
+          <label class="fb-chip"><input type="radio" name="fbType" value="other"><span>Other</span></label>
+        </div>
+
+        <label class="fb-label" for="fbMessage">Your feedback</label>
+        <textarea id="fbMessage" class="fb-input" rows="6" maxlength="2000" placeholder="What happened, or what would you like Lime to do?" required></textarea>
+        <div class="fb-count" id="fbCount">0 / 2000</div>
+
+        <label class="fb-label" for="fbContact">Contact <span class="fb-opt">(optional — only if you want a reply)</span></label>
+        <input id="fbContact" class="fb-input" type="text" maxlength="120" autocomplete="off" placeholder="email or @handle">
+
+        <div class="fb-hp" aria-hidden="true"><label>Website <input type="text" id="fbWebsite" tabindex="-1" autocomplete="off"></label></div>
+
+        <div class="fb-actions">
+          <button type="submit" class="fb-send" id="fbSend">Send feedback</button>
+          <div class="fb-status" id="fbStatus" role="status" aria-live="polite"></div>
+        </div>
+        <p class="fb-privacy">Stored in a private GitHub repository only the developer can open. Please don't include passwords or sensitive personal information. Your IP address isn't saved.</p>
+      </form>
     </div>
   </section>
 
@@ -1029,17 +1157,31 @@
         <div class="dl-note">Paste into PowerShell (not cmd.exe). It checks for Ollama first — skips the install step if you already have it. The model pull alone is a real ~9GB download.</div>
       </div>
 
-      <div class="dl-panel" style="margin-top:20px;">
-        <div>
+      <div class="rb-panel">
+        <div class="rb-head">
           <h3>Lime for Windows</h3>
-          <p>Windows 10/11 · 8GB RAM minimum · microphone required</p>
-          <div class="terminal-line"><span class="p">C:\&gt;</span> Lime-Setup-1.0.0.exe</div>
-          <div class="dl-note">Just the installer, if you already have Ollama + a model pulled yourself.</div>
+          <p>Windows 10/11 · 8GB RAM minimum · microphone required. Just the installer — for when you already have Ollama and a model pulled yourself.</p>
         </div>
-        <a class="btn-download" href="https://github.com/Denizprof/LimeAI/releases/download/v1.0.0/Lime-Setup-1.0.0.exe">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
-          Download installer only
-        </a>
+
+        <!-- The ring becomes the bar: one stroke, one length. At rest it's the ring you press;
+             pressed, it unrolls (about its foot) into the track a bar fills along. -->
+        <button type="button" class="rb-stage is-idle" id="rbStage" data-href="https://github.com/Denizprof/LimeAI/releases/download/v1.0.0/Lime-Setup-1.0.0.exe" aria-label="Download the Lime installer for Windows, 193 megabytes" aria-describedby="rbStatus">
+          <svg class="rb-svg" viewBox="0 0 480 230" aria-hidden="true" focusable="false">
+            <path id="rbTrack" class="rb-track" fill="none"/>
+            <g class="rb-fill">
+              <path id="rbFillGlow" class="rb-fill-glow" fill="none" pathLength="1"/>
+              <path id="rbFillCore" class="rb-fill-core" fill="none" pathLength="1"/>
+            </g>
+            <g id="rbArrow" class="rb-arrow" transform="translate(240 98)">
+              <g class="rb-bob"><path class="rb-arrow-shape" d="M0 -13 V9 M-9 1 L0 11 L9 1" fill="none"/></g>
+            </g>
+            <path id="rbCheck" class="rb-check" d="M-11 0 L-3 8 L11 -8" fill="none" transform="translate(240 98)"/>
+          </svg>
+          <div class="rb-status" id="rbStatus" aria-live="polite">Click the ring to download</div>
+          <div class="rb-file">Lime-Setup-1.0.0.exe · 193 MB</div>
+        </button>
+
+        <div class="dl-note rb-note">Your browser handles the actual download and shows its own live progress — the bar above is the hand-off, not a byte counter. Not starting? <a href="https://github.com/Denizprof/LimeAI/releases/download/v1.0.0/Lime-Setup-1.0.0.exe">Use the direct link</a>.</div>
       </div>
       <p class="flow-trigger-note">Unsigned build — Windows SmartScreen will show an "unknown publisher" warning on first run. That's because there's no paid code-signing certificate behind it, not because anything's wrong. Click "More info → Run anyway." · <a href="https://github.com/Denizprof/LimeAI/blob/main/LICENSE.md" target="_blank" rel="noopener">License</a></p>
     </div>
@@ -1066,7 +1208,7 @@
   // Router — real separate pages (no anchor-scrolling one long page).
   // Nav switches which .page is visible and jumps scroll to the top.
   // ---------------------------------------------------------------
-  var pages = ['home','commands','gui','brain','flowstate','memory','security','privacy','faq','about','download'];
+  var pages = ['home','commands','gui','brain','flowstate','memory','security','privacy','faq','feedback','about','download'];
 
   // scroll-reveal: fades/slides sections in as they cross into view, only
   // needs to be (re-)armed for whichever page just became visible
@@ -1083,15 +1225,122 @@
     });
   }
 
-  function moveUnderline(btn){
-    var line = document.getElementById('navUnderline');
-    if(!line || !btn) return;
-    var navRect = btn.parentElement.getBoundingClientRect();
-    var r = btn.getBoundingClientRect();
-    line.style.left = (r.left - navRect.left) + 'px';
-    line.style.width = r.width + 'px';
-    line.classList.add('show');
-  }
+  // ---------------------------------------------------------------
+  // Electric nav — a fixed-width arc (white core, blue glow) that surges
+  // under the active tab. Motion model: the leading end travels at
+  // constant speed to the target while the trailing end lags behind it by
+  // a triangular "tau" (0 at the start, peak at the midpoint, 0 on
+  // arrival) — so the arc stretches out mid-travel and snaps back to its
+  // resting width on arrival. Travel time is constant regardless of
+  // distance. The canvas lives inside <nav>, so it scrolls with the tabs
+  // when the nav overflows on narrow screens.
+  // ---------------------------------------------------------------
+  var surge = (function(){
+    var nav = document.querySelector('nav');
+    var canvas = document.createElement('canvas');
+    canvas.className = 'nav-surge';
+    var ctx = canvas.getContext && canvas.getContext('2d');
+    var noop = { moveTo:function(){}, snap:function(){} };
+    if(!nav || !ctx){ if(nav) nav.classList.add('no-surge'); return noop; }
+    nav.appendChild(canvas);
+
+    var ARC_W = 44;         // resting width (CSS px) — fixed, not a fraction of the label
+    var TRAVEL_MS = 460;    // constant travel time
+    var MAX_STRETCH = 190;  // max extra length mid-travel (px)
+    var GLOW = '111,195,255';
+    var cx = null, y = 0, curX = 0;       // resting centre + current visual centre
+    var from = null, to = null, t0 = 0, moving = false;
+    var looping = false, lastDraw = 0, dpr = 1, activeBtn = null;
+
+    function measure(btn){ return { x: btn.offsetLeft + btn.offsetWidth/2, y: btn.offsetTop + btn.offsetHeight - 3 }; }
+    function sizeCanvas(){
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var w = nav.scrollWidth, h = nav.clientHeight;
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    }
+    // deterministic per-point noise; the seed steps ~18x/sec so the bolt flickers
+    function rand(i, s){ var v = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return v - Math.floor(v); }
+    function layer(a, b, amp, seed, color, width, blur){
+      ctx.shadowColor = color; ctx.shadowBlur = blur * dpr;
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      var n = Math.max(2, Math.round((b - a) / 5));
+      ctx.beginPath();
+      for(var i = 0; i <= n; i++){
+        var edge = Math.min(1, (Math.min(i, n - i) / (n / 2)) * 2.2); // no jitter at the tips
+        var jy = (rand(i, seed) - 0.5) * 2 * amp * edge;
+        var px = a + (b - a) * i / n;
+        if(i === 0) ctx.moveTo(px, y + jy); else ctx.lineTo(px, y + jy);
+      }
+      ctx.stroke();
+    }
+    function draw(now){
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if(cx === null) return;
+      var a, b, amp, energy;
+      if(moving){
+        var p = Math.min(1, (now - t0) / TRAVEL_MS);
+        var dir = to.x >= from.x ? 1 : -1;
+        var D = Math.abs(to.x - from.x);
+        var head = from.x + dir * ARC_W / 2 + dir * D * p;          // linear
+        var tri = 1 - Math.abs(2 * p - 1);                          // 0 → 1 → 0
+        var tail = head - dir * (ARC_W + Math.min(D * 0.55, MAX_STRETCH) * tri);
+        a = Math.min(head, tail); b = Math.max(head, tail);
+        curX = from.x + dir * D * p;
+        y = from.y + (to.y - from.y) * p;
+        energy = 0.6 + 0.4 * tri;
+        amp = 1.2 + 2.6 * tri;
+        if(p >= 1){ moving = false; cx = to.x; curX = cx; y = to.y; }
+      } else {
+        a = cx - ARC_W / 2; b = cx + ARC_W / 2;
+        energy = reduceMotion ? 0.9 : 0.82 + 0.18 * Math.sin(now / 420);  // gentle idle breathing
+        amp = reduceMotion ? 0 : 0.7;
+      }
+      var seed = reduceMotion ? 0 : Math.floor(now / 55);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      layer(a, b, amp, seed, 'rgba(' + GLOW + ',' + (0.30 * energy) + ')', 9, 18);
+      layer(a, b, amp, seed, 'rgba(' + GLOW + ',' + (0.85 * energy) + ')', 3.4, 7);
+      layer(a, b, amp, seed, 'rgba(255,255,255,0.96)', 1.6, 3);
+    }
+    function loop(now){
+      if(document.hidden){ looping = false; return; }
+      if(!moving && now - lastDraw < 33){ requestAnimationFrame(loop); return; } // idle: ~30fps
+      lastDraw = now; draw(now); requestAnimationFrame(loop);
+    }
+    function startLoop(){ if(!looping && !reduceMotion){ looping = true; requestAnimationFrame(loop); } }
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) startLoop(); });
+
+    function keepInView(btn, instant){
+      if(nav.scrollWidth > nav.clientWidth + 2){
+        var left = Math.max(0, btn.offsetLeft - (nav.clientWidth - btn.offsetWidth) / 2);
+        nav.scrollTo({ left: left, behavior: (instant || reduceMotion) ? 'auto' : 'smooth' });
+      }
+    }
+    function snap(){                       // re-measure without animating (resize, fonts loaded)
+      if(!activeBtn) return;
+      var m = measure(activeBtn);
+      cx = curX = m.x; y = m.y; moving = false;
+      sizeCanvas(); draw(performance.now());
+      startLoop();
+    }
+    function moveTo(btn){
+      var first = (cx === null);
+      activeBtn = btn;
+      var m = measure(btn);
+      if(first || reduceMotion){ snap(); keepInView(btn, true); return; }
+      if(Math.abs(m.x - curX) < 0.5){ y = m.y; return; }
+      from = { x: curX, y: y }; to = m; t0 = performance.now(); moving = true;  // restarts cleanly mid-flight too
+      keepInView(btn, false);
+      startLoop();
+    }
+    if(window.ResizeObserver) new ResizeObserver(function(){ snap(); }).observe(nav);
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ snap(); if(activeBtn) keepInView(activeBtn, true); });
+    return { moveTo: moveTo, snap: snap };
+  })();
+
+  function moveUnderline(btn){ surge.moveTo(btn); }
 
   function showPage(name){
     if(pages.indexOf(name)===-1) name='home';
@@ -1123,10 +1372,7 @@
   window.addEventListener('popstate', function(){
     showPage((location.hash||'#home').slice(1));
   });
-  window.addEventListener('resize', function(){
-    var activeBtn = document.querySelector('nav button[data-nav].active');
-    if(activeBtn) moveUnderline(activeBtn);
-  });
+  window.addEventListener('resize', function(){ surge.snap(); });
   showPage((location.hash||'#home').slice(1));
 
   // ---------------------------------------------------------------
@@ -1185,6 +1431,187 @@
       }).catch(function () {});
     });
   }
+
+  // ---------------------------------------------------------------
+  // Ring → bar download button. ONE stroke keeps ONE length: at rest it
+  // is a ring (the thing you press); pressed, it unrolls about its foot
+  // into a straight track, the arrow drops onto it, plucks the rope, and
+  // rides a bright fill along it. Every point is a blend between its ring
+  // position and its line position, unzipping outward from the foot.
+  //
+  // Honesty note: the browser does the real download (GitHub release
+  // assets send no CORS headers, so page JS can't read byte progress).
+  // The bar is therefore the hand-off animation and the copy says so — it
+  // never claims a percentage of the actual download.
+  // ---------------------------------------------------------------
+  (function setupRingDownload(){
+    var stage = document.getElementById('rbStage');
+    if(!stage) return;
+    var track = document.getElementById('rbTrack'), glow = document.getElementById('rbFillGlow'),
+        core = document.getElementById('rbFillCore'), arrow = document.getElementById('rbArrow'),
+        statusEl = document.getElementById('rbStatus');
+    var HREF = stage.getAttribute('data-href');
+    var CX = 240, CY = 98, R = 42, C = 2 * Math.PI * R, FOOT = CY + R, LEFT = CX - C / 2, RIGHT = CX + C / 2, N = 100;
+    var UNROLL_MS = 850, LOAD_MS = 1900, REROLL_MS = 420;
+    var st = { phase: 'idle', u: 0, p: 0, sag: 0, ax: CX, ay: CY, rot: 0, t0: 0, landed: 0 };
+    var raf = 0;
+
+    function clamp(x, a, b){ return Math.min(b, Math.max(a, x)); }
+    function smooth(x){ x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+    function easeInOut(x){ x = clamp(x, 0, 1); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+
+    // s runs crown → LEFT → foot → RIGHT → crown, so on the line it maps to left end → centre → right end
+    function point(s, u, sag){
+      var d = Math.abs(s - .5) * 2;                    // 0 at the foot, 1 at the crown
+      var uk = smooth(u * 1.6 - 0.6 * d);              // foot flattens first, crown last
+      var a = -Math.PI / 2 - s * 2 * Math.PI;
+      var rx = CX + R * Math.cos(a), ry = CY + R * Math.sin(a);
+      var lx = CX + (s - .5) * C, k = (s - .5) * 2;
+      return [rx + (lx - rx) * uk, ry + (FOOT - ry) * uk + sag * (1 - k * k) * uk];
+    }
+    function pathD(u, sag){
+      var d = '';
+      for(var i = 0; i <= N; i++){ var p = point(i / N, u, sag); d += (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }
+      return d;
+    }
+    function lineY(x, sag){ var k = (x - CX) / (C / 2); return FOOT + sag * (1 - k * k); }
+
+    function render(){
+      var d = pathD(st.u, st.sag);
+      track.setAttribute('d', d); glow.setAttribute('d', d); core.setAttribute('d', d);
+      track.style.strokeOpacity = (0.95 - 0.68 * smooth(st.u)).toFixed(3);
+      var dash = st.p.toFixed(4) + ' 1', vis = st.p > 0.003 ? '1' : '0';
+      glow.style.strokeDasharray = dash; core.style.strokeDasharray = dash;
+      glow.style.opacity = vis; core.style.opacity = vis;
+      arrow.setAttribute('transform', 'translate(' + st.ax.toFixed(1) + ' ' + st.ay.toFixed(1) + ') rotate(' + st.rot.toFixed(1) + ')');
+    }
+
+    function startDownload(){
+      try {
+        var a = document.createElement('a');
+        a.href = HREF; a.rel = 'noopener'; a.style.display = 'none';
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ if(a.parentNode) a.parentNode.removeChild(a); }, 1500);
+      } catch(e) {}
+    }
+    function setClass(idle, done){ stage.classList.toggle('is-idle', idle); stage.classList.toggle('is-done', done); }
+    function finish(){
+      st.phase = 'done'; st.u = 1; st.p = 1; st.sag = 0; st.ax = RIGHT; st.ay = FOOT - 12; st.rot = -90;
+      setClass(false, true);
+      var chk = document.getElementById('rbCheck'); chk.setAttribute('transform', 'translate(' + RIGHT + ' ' + (FOOT - 20) + ')');
+      statusEl.textContent = 'Download started — your browser is showing the live progress.';
+      render();
+    }
+
+    function tick(now){
+      var t;
+      if(st.phase === 'unroll'){
+        t = (now - st.t0) / UNROLL_MS;
+        st.u = easeInOut(t);
+        var f = clamp((t - 0.25) / 0.6, 0, 1);              // the arrow waits, then falls onto the centre of the line
+        st.ax = CX; st.ay = CY + (FOOT - 12 - CY) * f * f; st.rot = 0; st.sag = 0;
+        if(t >= 1){ st.phase = 'load'; st.t0 = now; st.landed = now; statusEl.textContent = 'Handing it to your browser…'; }
+      } else if(st.phase === 'load'){
+        t = clamp((now - st.t0) / LOAD_MS, 0, 1);
+        var tau = (now - st.landed) / 1000;
+        st.sag = 15 * Math.exp(-6 * tau) * Math.cos(22 * tau);   // the rope plucked by the landing, damped
+        if(t < 0.2){                                            // wind-up: slide to the left end, turn to point right
+          var w = easeInOut(t / 0.2);
+          st.ax = CX + (LEFT - CX) * w; st.rot = -90 * w; st.p = 0;
+        } else {
+          st.p = easeInOut((t - 0.2) / 0.8); st.ax = LEFT + st.p * C; st.rot = -90;
+        }
+        st.ay = lineY(st.ax, st.sag) - 12;
+        if(t >= 1){ finish(); return; }
+      } else if(st.phase === 'reroll'){
+        t = clamp((now - st.t0) / REROLL_MS, 0, 1);
+        st.u = 1 - easeInOut(t); st.p = 1 - t; st.sag = 0; st.ax = CX; st.ay = CY; st.rot = 0;
+        setClass(false, false);
+        if(t >= 1){ st.p = 0; begin(now); return; }
+      }
+      render();
+      raf = requestAnimationFrame(tick);
+    }
+    function begin(now){
+      st.phase = 'unroll'; st.t0 = now; st.u = 0; st.p = 0; st.sag = 0; st.ax = CX; st.ay = CY; st.rot = 0;
+      setClass(false, false);
+      statusEl.textContent = 'Starting your download…';
+      raf = requestAnimationFrame(tick);
+    }
+
+    stage.addEventListener('click', function(){
+      if(st.phase === 'unroll' || st.phase === 'load' || st.phase === 'reroll') return;   // ignore while animating
+      startDownload();
+      if(reduceMotion){ finish(); return; }
+      if(st.phase === 'done'){ st.phase = 'reroll'; st.t0 = performance.now(); raf = requestAnimationFrame(tick); }
+      else begin(performance.now());
+    });
+    render();   // draw the resting ring
+  })();
+
+  // ---------------------------------------------------------------
+  // Feedback form. Submissions go to a small serverless endpoint (see
+  // feedback-worker/) which appends them to a Markdown file in a PRIVATE
+  // GitHub repo. The GitHub token lives only inside that worker — a
+  // public page can't safely hold one — so until FEEDBACK_ENDPOINT is
+  // set, the form says it isn't connected instead of pretending to send.
+  // ---------------------------------------------------------------
+  (function setupFeedback(){
+    var FEEDBACK_ENDPOINT = '';   // e.g. 'https://lime-feedback.<your-subdomain>.workers.dev' — see feedback-worker/README.md
+    var form = document.getElementById('fbForm');
+    if(!form) return;
+    var msg = document.getElementById('fbMessage'), contact = document.getElementById('fbContact'),
+        hp = document.getElementById('fbWebsite'), count = document.getElementById('fbCount'),
+        send = document.getElementById('fbSend'), statusEl = document.getElementById('fbStatus');
+    var firstInputAt = 0, COOLDOWN_MS = 60000, MIN_LEN = 5;
+
+    function say(text, kind){ statusEl.textContent = text; statusEl.className = 'fb-status' + (kind ? ' ' + kind : ''); }
+    function lastSent(){ try { return parseInt(localStorage.getItem('limeFbLast') || '0', 10) || 0; } catch(e) { return 0; } }
+    function markSent(){ try { localStorage.setItem('limeFbLast', String(Date.now())); } catch(e) {} }
+
+    if(!FEEDBACK_ENDPOINT){
+      send.disabled = true;
+      say("Feedback isn't connected yet — the private inbox is still being set up.", 'err');
+    }
+
+    msg.addEventListener('input', function(){
+      if(!firstInputAt) firstInputAt = Date.now();
+      count.textContent = msg.value.length + ' / 2000';
+      count.classList.toggle('near', msg.value.length > 1800);
+    });
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if(!FEEDBACK_ENDPOINT) return;
+      var text = msg.value.trim();
+      if(text.length < MIN_LEN){ say('Write a little more first (at least ' + MIN_LEN + ' characters).', 'err'); msg.focus(); return; }
+      var wait = COOLDOWN_MS - (Date.now() - lastSent());
+      if(wait > 0){ say('You just sent one — please wait ' + Math.ceil(wait / 1000) + 's before sending another.', 'err'); return; }
+
+      var type = (form.querySelector('input[name="fbType"]:checked') || {}).value || 'other';
+      var body = JSON.stringify({
+        type: type, message: text, contact: contact.value.trim(),
+        website: hp.value,                                   // honeypot — real people leave it empty
+        elapsedMs: firstInputAt ? Date.now() - firstInputAt : 0,
+        page: location.hash || '#feedback'
+      });
+
+      send.disabled = true; say('Sending…');
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 12000);
+      fetch(FEEDBACK_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, signal: ctrl ? ctrl.signal : undefined })
+        .then(function(res){ return res.json().catch(function(){ return {}; }).then(function(j){ return { status: res.status, body: j }; }); })
+        .then(function(r){
+          if(r.body && r.body.ok){
+            markSent(); msg.value = ''; contact.value = ''; count.textContent = '0 / 2000'; firstInputAt = 0;
+            say('Thanks — sent to the private inbox.', 'ok');
+          } else if(r.status === 429){ say('Too many messages from your connection right now — please try again later.', 'err'); }
+          else { say("Couldn't send that — please try again in a bit.", 'err'); }
+        })
+        .catch(function(){ say("Couldn't reach the inbox — check your connection and try again.", 'err'); })
+        .then(function(){ clearTimeout(timer); send.disabled = false; });
+    });
+  })();
 
   // ---------------------------------------------------------------
   // Real 3D particle globe, bottom-left — same corner convention the

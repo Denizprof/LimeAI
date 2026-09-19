@@ -29,10 +29,16 @@ If you're pushing this on top of what's already there:
 - **Delete the `download` folder** at the repo root — it's a leftover from an earlier manual upload and isn't referenced by anything.
 - Overwrite `index.html` and `dashboard-screenshot.png` with the versions in this zip.
 - Add `robots.txt` if it's missing.
-- Consider making the repo **public** (Settings → General → Danger Zone → Change visibility) — a private repo can still serve a public GitHub Pages site, which is a confusing combination for anyone who finds the Pages link and then can't see the source.
 
 ## Notes
 
 - No build step, no dependencies to install — it's static HTML/CSS/JS plus one external font stylesheet and the Three.js CDN script (both already referenced in `index.html`).
-- The Download page's button is intentionally a placeholder — there's no packaged installer yet. Swap its `href` for a real release URL once one exists.
+- The Download page links to the real installer on the repo's Releases page (`v1.0.0`) and offers a one-line PowerShell installer (`install.ps1`) that also sets up Ollama and the model.
 - Copyright / attribution lives in the page footer, under the "Denizprof" handle rather than a full real name — deliberate, since the site is public and the author is a minor.
+
+## Feedback inbox
+
+The site's **Feedback** page posts to a small Cloudflare Worker (`feedback-worker/`) that appends each
+message to a **private** GitHub repo (`Denizprof/LimeAI-feedback`). The GitHub token lives only in the
+Worker's secret store, never in this public site. Setup steps are in `feedback-worker/README.md`; until
+`FEEDBACK_ENDPOINT` in `index.html` is set, the form says it isn't connected rather than pretending to send.
